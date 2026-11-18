@@ -144,6 +144,11 @@
     const inPrep = PREP.includes(route[0]);
     view.innerHTML = (inPrep ? prepBar(route, flow) : runLine(route, flow)) + Views[route[2]]() + (inPrep ? prepPager(route, flow) : '');
     view.dataset.route = route[2];
+    // 작품 코드(원드라마 작품 ID)는 길어서 화면 글자에서는 끝 4글자만 보여 준다. 입력 칸과 링크의 실제 값은 그대로 둔다.
+    const walker = document.createTreeWalker(view, NodeFilter.SHOW_TEXT);
+    const hits = [];
+    while (walker.nextNode()) { const nd = walker.currentNode; Calc.ID_RE.lastIndex = 0; if (Calc.ID_RE.test(nd.nodeValue) && !nd.parentElement.closest('textarea, .linkcell, .full-id')) hits.push(nd); }
+    hits.forEach((nd) => { const el = nd.parentElement; if (!el.title && el.tagName !== 'OPTION') el.title = nd.nodeValue.trim(); nd.nodeValue = Calc.short(nd.nodeValue); });
 
     if (keepScroll) {
       window.scrollTo(0, y);
@@ -234,6 +239,15 @@
     if (ev.key === 'onedrama-ads-v1') { Store.state = JSON.parse(ev.newValue || 'null') || Store.state; render(true); }
   });
   window.App = { render };
+
+  // 옛 작품 코드(w01 등)를 원드라마 작품 ID 코드로 옮긴다. 보관한 소재 파일의 이름표도 같이 옮긴다.
+  (function () {
+    const before = Object.keys(Store.state.creatives).filter((k) => (Store.state.creatives[k] || {}).file);
+    const moved = Calc.migrateCodes(Store.state);
+    if (!moved.length) return;
+    Store.save();
+    moved.forEach(([old, id]) => before.filter((k) => k.indexOf(old + '_') === 0).forEach((k) => window.Assets.rename(k, id + k.slice(old.length))));
+  })();
 
   // 이미 골라 둔 작품도 비어 있는 소재 내용을 추천대로 채운다 (정해 둔 것은 건드리지 않는다).
   if (Store.state.works.reduce((n, w) => n + window.Playbook.fillTags(Store.state, w), 0)) Store.save();

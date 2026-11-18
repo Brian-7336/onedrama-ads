@@ -215,5 +215,8 @@
   window.addEventListener('dragover', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
   window.addEventListener('drop', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
 
-  window.Assets = { cell, put, get: dbGet, check, expected, summary, assign };
+  // 작품 코드가 바뀌면 보관한 파일의 이름표도 새 코드로 옮긴다.
+  async function rename(oldKey, newKey) { const f = await dbGet(oldKey); if (f) { await dbPut(newKey, f); await dbDel(oldKey); } }
+
+  window.Assets = { cell, put, get: dbGet, rename, check, expected, summary, assign };
 })();

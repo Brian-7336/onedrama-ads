@@ -217,14 +217,10 @@
     if (!list.length) { toast('더 고를 수 있는 작품이 없습니다'); return false; }
     Store.update((s) => {
       list.forEach((x) => {
-        const used = new Set(s.works.map((w) => w.code));
-        let i = 1;
-        while (used.has('w' + String(i).padStart(2, '0'))) i++;
-        const w = { code: 'w' + String(i).padStart(2, '0'), title: x.w.title, cp: x.w.cp, url: (window.LANDING || {})[x.w.cp + '|' + x.w.title] || '' };
+        const w = { code: Calc.newCode(s, x.w.cp, x.w.title), title: x.w.title, cp: x.w.cp, url: (window.LANDING || {})[x.w.cp + '|' + x.w.title] || '' };
         s.works.push(w);
         fillTags(s, w);
       });
-      s.works.sort((a, b) => (a.code < b.code ? -1 : 1));
     });
     toast(list.map((x) => x.w.title).join(', ') + ' 골랐습니다');
   };

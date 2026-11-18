@@ -55,11 +55,13 @@ def first_episode(chnl):
 
 
 ep1 = {}
+ids = {}        # 「CP|작품명」 → 원드라마 작품 ID (소문자). 광고 이름과 링크 꼬리표의 작품 코드로 쓴다.
 out, dup, miss, no_ep = {}, [], [], []
 for w in works:
     hit = site.get(norm(ALIAS.get(w['title'], w['title'])), [])
     if len(hit) == 1:
         chnl = hit[0]['chnlId']
+        ids[w['cp'] + '|' + w['title']] = chnl.lower()
         if chnl not in ep1:
             ep1[chnl] = first_episode(chnl)
         if not ep1[chnl]:
@@ -72,6 +74,7 @@ for w in works:
 
 with open(os.path.join(root, 'js', 'landing-data.js'), 'w', encoding='utf-8', newline='\n') as f:
     f.write('// tools/build_landing.py 가 만든 파일. 직접 고치지 않는다.\n// 키는 「CP|작품명」, 값은 작품 페이지 주소.\nwindow.LANDING = ' + json.dumps(out, ensure_ascii=False, separators=(',', ':')) + ';\n')
+    f.write('// 원드라마 작품 ID (소문자). 작품 코드로 쓴다.\nwindow.WORKID = ' + json.dumps(ids, ensure_ascii=False, separators=(',', ':')) + ';\n')
 
 sys.stdout.reconfigure(encoding='utf-8')
 cand = [w for w in works if w.get('cand')]

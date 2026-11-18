@@ -206,6 +206,38 @@
       if (i >= 0) { hash = base.slice(i); base = base.slice(0, i); }
       return base + (base.includes('?') ? '&' : '?') + params + hash;
     },
+    // 작품 코드: 원드라마 작품 ID(소문자)를 그대로 쓴다. 캠페인이 바뀌어도 같은 작품은 같은 코드다.
+    // 사이트에 없는 작품만 w01, w02… 를 임시로 붙인다.
+    newCode(s, cp, title) {
+      const id = (window.WORKID || {})[cp + '|' + title];
+      if (id) return id;
+      const used = new Set(s.works.map((w) => w.code));
+      let i = 1;
+      while (used.has('w' + String(i).padStart(2, '0'))) i++;
+      return 'w' + String(i).padStart(2, '0');
+    },
+    // 화면에 보여 줄 때는 긴 ID를 끝 4글자로 줄인다 (예: …m8ep). 실제 값은 그대로다.
+    ID_RE: /[0-9a-hjkmnp-tv-z]{22}([0-9a-hjkmnp-tv-z]{4})(?![0-9a-z])/g,
+    short(text) { return String(text).replace(Calc.ID_RE, '…$1'); },
+    // 옛 코드(w01 등)로 저장된 내용을 작품 ID 코드로 옮긴다. 옮긴 [옛 코드, 새 코드] 목록을 돌려준다.
+    migrateCodes(s) {
+      const moved = [];
+      s.works.forEach((w) => {
+        const id = (window.WORKID || {})[w.cp + '|' + w.title];
+        if (!id || w.code === id) return;
+        const old = w.code;
+        const re = new RegExp('(^|[|_])' + old + '(?=_|$)');
+        const rekey = (obj) => { if (!obj) return; Object.keys(obj).forEach((k) => { const nk = k.replace(re, '$1' + id); if (nk !== k) { obj[nk] = obj[k]; delete obj[k]; } }); };
+        rekey(s.creatives);
+        rekey(s.extraCreatives);
+        const r = s.settings.reg || {};
+        ['copy', 'assets', 'status', 'keywords', 'groupIds'].forEach((k) => rekey(r[k]));
+        s.reports.forEach((x) => { if (x.work === old) x.work = id; });
+        w.code = id;
+        moved.push([old, id]);
+      });
+      return moved;
+    },
     creativeIds(code) {
       return P.creativeTypes.map((c) => c.id).concat(Store.state.extraCreatives[code] || []);
     },

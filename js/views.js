@@ -355,13 +355,9 @@
   Actions.filterWorks = (el) => { ui.works[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value; };
   Actions.pickWork = (el) => Store.update((s) => {
     if (s.works.length >= 5) return;
-    const used = new Set(s.works.map((w) => w.code));
-    let i = 1;
-    while (used.has('w' + String(i).padStart(2, '0'))) i++;
-    const w = { code: 'w' + String(i).padStart(2, '0'), title: el.dataset.title, cp: el.dataset.cp, url: (window.LANDING || {})[el.dataset.cp + '|' + el.dataset.title] || '' };
+    const w = { code: Calc.newCode(s, el.dataset.cp, el.dataset.title), title: el.dataset.title, cp: el.dataset.cp, url: (window.LANDING || {})[el.dataset.cp + '|' + el.dataset.title] || '' };
     s.works.push(w);
     window.Playbook.fillTags(s, w);   // 소재 내용을 추천대로 미리 채운다
-    s.works.sort((a, b) => (a.code < b.code ? -1 : 1));
   });
   Actions.unpickWork = (el) => {
     const code = el.dataset.code;
@@ -439,7 +435,7 @@
     const noUrl = works.filter((w) => !w.url);
     const sameMedium = Calc.ytMedium() === 'paid_social';
 
-    const nameRows = P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td><code>' + P.campaign + '_' + m.id + '</code></td><td><code>' + P.campaign + '_' + m.id + '_' + m.placements[0] + '_w01</code></td><td><code>' + (m.search ? (m.creatives.includes('title') ? 'w01_title' : m.creatives[0]) : 'w01_' + m.creatives[0]) + '</code></td><td><code>' + m.source + '</code></td><td><code>' + Calc.mediumOf(m) + '</code></td></tr>').join('');
+    const nameRows = P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td><code>' + P.campaign + '_' + m.id + '</code></td><td><code>' + P.campaign + '_' + m.id + '_' + m.placements[0] + '_작품ID</code></td><td><code>' + (m.search ? (m.creatives.includes('title') ? '작품ID_title' : m.creatives[0]) : '작품ID_' + m.creatives[0]) + '</code></td><td><code>' + m.source + '</code></td><td><code>' + Calc.mediumOf(m) + '</code></td></tr>').join('');
 
     return head('링크 태그 (utm)', '위키 「유입 링크 태그 규칙 — 숏드라마」(651924478)를 따른다. 영어 소문자, 숫자, 밑줄만 쓴다.',
       '<button data-act="copyAllLinks">전체 복사</button><button data-act="csvLinks">CSV 내려받기</button>') +
@@ -447,7 +443,7 @@
       (!works.length ? '<div class="notice warn">작품을 고르면 작품별 링크가 만들어집니다. <a href="#/works">작품 고르기</a></div>' : '') +
       '<div class="card"><h2>규칙</h2><dl class="kv">' +
         '<dt>campaign</dt><dd><code>' + P.campaign + '</code> 하나로 둔다. 시기가 바뀌어도 그대로 두고 소재로 나눠 본다.</dd>' +
-        '<dt>content</dt><dd>영상·이미지·배너는 <code>작품코드_소재번호</code> (예: <code>w01_v15a</code>). 검색은 키워드 묶음 (<code>brand</code>, <code>genre</code>, <code>w01_title</code>).</dd>' +
+        '<dt>content</dt><dd>영상·이미지·배너는 <code>작품코드_소재번호</code> (예: <code>작품ID_v15a</code>). 작품코드는 원드라마 작품 ID를 소문자로 쓴다. 화면에는 끝 4글자만 보인다. 검색은 키워드 묶음 (<code>brand</code>, <code>genre</code>, <code>w01_title</code>).</dd>' +
         '<dt>유튜브 medium</dt><dd><select data-chg="setYtMedium" aria-label="유튜브 medium">' + opt('paid_social', 'paid_social (시트 기준)', Calc.ytMedium()) + opt('paid_video', 'paid_video (메타와 분리)', Calc.ytMedium()) + '</select> ' +
           (sameMedium ? '<span class="small muted">메타와 같은 값이라 GA4에서는 source로만 나뉜다.</span>' : '<span class="tag warn">위키 표에 없는 값. 쓰기 전에 표에 추가하고 GA4 담당에게 알린다.</span>') + '</dd>' +
         '<dt>위키에 없는 값</dt><dd><code>paid_search</code>, <code>display</code>는 위키 표에 한 줄 더하고 GA4 담당(윤현정 님)께 알린 뒤 쓴다.</dd>' +
@@ -535,7 +531,7 @@
         '<button class="primary">기록 추가</button></div></form>' +
         '<div class="actions" style="margin-top:12px"><span class="small muted">숫자 가져올 곳</span>' + ext(Calc.adUrl(m), m.name + ' · ' + m.ad.name, 'sm') + ext(Calc.toolUrl(P.tools[0]), 'GA4', 'sm') + '</div>' +
         '<details style="margin-top:12px"><summary class="small muted" style="cursor:pointer">여러 줄 한꺼번에 붙여 넣기 (CSV)</summary><p class="small muted" style="margin-top:8px">한 줄에 <code>날짜,매체,작품코드,소재,집행액,노출,클릭,첫재생,3화시청,결제</code> 순서. 매체는 meta, youtube, naver, gsearch, gdn. 엑셀에서 복사한 탭 구분도 된다.</p>' +
-        '<form data-submit="importCsv"><textarea name="csv" rows="4" style="width:100%" placeholder="2026-12-01,meta,w01,v15a,22000,5200,140,96,31,2" aria-label="CSV 붙여 넣기"></textarea><div style="margin-top:6px"><button>붙여 넣은 줄 추가</button></div></form></details></div>' +
+        '<form data-submit="importCsv"><textarea name="csv" rows="4" style="width:100%" placeholder="2026-12-01,meta,작품코드,v15a,22000,5200,140,96,31,2" aria-label="CSV 붙여 넣기"></textarea><div style="margin-top:6px"><button>붙여 넣은 줄 추가</button></div></form></details></div>' +
       '<div class="card"><div class="filters">' +
         '<div class="seg" role="tablist" aria-label="집계 기준">' + tabs.map((t) => '<button role="tab" aria-selected="' + (r.tab === t[0]) + '" class="' + (r.tab === t[0] ? 'on' : '') + '" data-act="reportTab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' +
         '<span style="flex:1"></span>' +

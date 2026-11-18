@@ -128,7 +128,7 @@ window.PLAN = {
             { id: 'p02', text: '작품마다 CP 홍보 허락 범위 확인 (스튜디오지니는 무료 회차 사용 가능 확인, 나머지 CP 미확인)', owner: '권오성' },
             { id: 'p20', text: 'CP 추천작 중 공개 보류 2편(미친 BL소설에서 살아남기, 수영부 또라이에게 찍혀버렸다)의 12월 공개 여부 확인', owner: '권오성', link: '#/works' },
             { id: 'p21', text: '스튜디오지니 가로형 포스터 추가분 아스페라에서 받기', owner: '마스' },
-            { id: 'p03', text: '작품코드(w01~) 배정', owner: '브라이언', link: '#/works' },
+            { id: 'p03', text: '작품코드 배정 (원드라마 작품 ID로 자동)', owner: '브라이언', link: '#/works' },
             { id: 'p04', text: '작품마다 소재 8종 받기 (NAS 원본은 복사해서 작업)', owner: '마스', link: '#/creatives' },
             { id: 'p05', text: '소재 검수: 첫 3초, 자막, 끝 카드 로고, 세이프존, 배너 두 크기', owner: '브라이언', link: '#/creatives' },
           ],
