@@ -1,0 +1,5 @@
+# 원본 문서는 올리지 않는다 (NAS 경로 등 내부 정보 포함)
+*.xlsx
+HANDOFF.md
+.claude/
+__pycache__/
