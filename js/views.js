@@ -302,7 +302,7 @@
         (on ? '<span class="tag accent">고름</span>' : w.cand ? '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(title) + '"' + (full ? ' disabled' : '') + '>고르기</button>' : '<span class="small muted">공개 여부 확인 필요</span>') + '</td></tr>';
     }).join('');
 
-    const pickedHtml = picked.length ? '<div class="tablewrap"><table><thead><tr><th>코드</th><th>작품</th><th>CP</th><th>출시일</th><th class="num">회차</th><th class="num">무료</th><th>랜딩 주소 (원드라마 작품 페이지, 자동 입력)</th><th></th></tr></thead><tbody>' +
+    const pickedHtml = picked.length ? '<div class="tablewrap"><table><thead><tr><th>코드</th><th>작품</th><th>CP</th><th>출시일</th><th class="num">회차</th><th class="num">무료</th><th>랜딩 주소 (1화 재생 화면, 자동 입력)</th><th></th></tr></thead><tbody>' +
       picked.map((w) => {
         const d = WORKS_DATA.find((x) => x.title === w.title && x.cp === w.cp) || {};
         return '<tr><td><code>' + h(w.code) + '</code></td><td>' + h(w.title) + (dupTitles.has(w.title) ? ' <span class="tag warn" title="다른 CP에도 같은 제목이 있습니다. 권리 확인 필요">제목 중복</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + relCell(w.title) + '</td><td class="num">' + n(d.eps) + '</td><td class="num">' + (d.free == null ? '<span class="tag warn">미정</span>' : d.free + ((d.free || 0) < 3 ? ' <span class="tag warn" title="3화 시청이 곧 결제입니다">3화 유료</span>' : '')) + '</td>' +

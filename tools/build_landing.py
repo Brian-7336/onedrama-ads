@@ -1,7 +1,8 @@
 # 원드라마 사이트의 공개 목록에서 작품별 주소를 받아 js/landing-data.js 로 만든다.
 # 사용: python tools/build_landing.py
-# 작품 주소는 https://drama.onestore.co.kr/<작품 ID> 이다 (작품 페이지의 canonical 주소와 같다).
-import json, os, re, sys, urllib.parse, urllib.request
+# 랜딩 주소는 1화 재생 화면이다: https://drama.onestore.co.kr/<작품 ID>/<1화 ID>
+# 1화를 찾지 못한 작품은 작품 페이지(https://drama.onestore.co.kr/<작품 ID>)로 둔다.
+import json, os, re, sys, time, urllib.parse, urllib.request
 
 SITE = 'https://drama.onestore.co.kr'
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,11 +41,30 @@ for x in items:
 src = open(os.path.join(root, 'js', 'works-data.js'), encoding='utf-8').read()
 works = json.loads(src[src.index('['):src.rindex(']') + 1])
 
-out, dup, miss = {}, [], []
+def first_episode(chnl):
+    """1화의 회차 ID. 못 찾으면 빈 글자."""
+    try:
+        req = urllib.request.Request(SITE + '/api/v1/catalog/series/' + chnl + '/episodes', headers={'User-Agent': 'Mozilla/5.0'})
+        eps = json.load(urllib.request.urlopen(req, timeout=30))['data']['items']
+    except Exception as e:
+        print('episodes fail', chnl, e)
+        return ''
+    time.sleep(0.15)
+    one = [e for e in eps if str(e.get('no')) == '1']
+    return one[0]['episodeId'] if one else ''
+
+
+ep1 = {}
+out, dup, miss, no_ep = {}, [], [], []
 for w in works:
     hit = site.get(norm(ALIAS.get(w['title'], w['title'])), [])
     if len(hit) == 1:
-        out[w['cp'] + '|' + w['title']] = SITE + '/' + hit[0]['chnlId']
+        chnl = hit[0]['chnlId']
+        if chnl not in ep1:
+            ep1[chnl] = first_episode(chnl)
+        if not ep1[chnl]:
+            no_ep.append(w['title'])
+        out[w['cp'] + '|' + w['title']] = SITE + '/' + chnl + ('/' + ep1[chnl] if ep1[chnl] else '')
     elif len(hit) > 1:
         dup.append(w['title'])       # 같은 제목이 둘 이상이면 자동으로 정하지 않는다
     else:
@@ -57,5 +77,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 cand = [w for w in works if w.get('cand')]
 print('site', len(items), 'works', len(works), 'matched', len(out), 'cand matched', sum(1 for w in cand if w['cp'] + '|' + w['title'] in out), '/', len(cand))
 print('dup', dup)
+print('no ep1', no_ep)
 print('miss(cand)', [w['title'] for w in cand if w['title'] in miss])
 print('site only', [x['title'] for x in items if norm(x['title']) not in {norm(ALIAS.get(w['title'], w['title'])) for w in works}])
