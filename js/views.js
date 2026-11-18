@@ -220,8 +220,8 @@
       '<div class="card"><h2>매체별 계획과 집행</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th class="num">월 예산</th><th class="num">비중</th><th class="num">오늘까지 계획</th><th class="num">집행액</th><th>월 예산 대비</th><th class="num">남은 예산</th></tr></thead><tbody>' + actualRows +
         '<tr class="total"><td>합계</td><td class="num">' + won(P.budget) + '</td><td class="num">100%</td><td class="num">' + won(Calc.plannedUntil(today)) + '</td><td class="num">' + won(tot.cost) + '</td><td>' + bar(tot.cost / P.budget) + '</td><td class="num">' + won(P.budget - tot.cost) + '</td></tr></tbody></table></div></div>' +
       '<div class="card"><h2>시기별 계획과 집행</h2><div class="tablewrap"><table><thead><tr><th>시기</th><th class="num">계획</th><th class="num">집행액</th><th>계획 대비</th><th class="num">첫 재생</th><th class="num">첫 재생당</th></tr></thead><tbody>' + byPhase + '</tbody></table></div></div>' +
-      '<div class="card"><h2>매체 구성</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>상품</th><th>목적</th><th>타깃</th><th>과금</th></tr></thead><tbody>' +
-        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td></tr>').join('') + '</tbody></table></div></div>';
+      '<div class="card"><h2>매체 구성</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>상품</th><th>목적</th><th>타깃</th><th>과금</th><th>원드라마 계정</th></tr></thead><tbody>' +
+        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td><td>' + (m.accounts ? m.accounts.map(h).join('<br>') : '<span class="muted">계정 없이 집행</span>') + '</td></tr>').join('') + '</tbody></table></div><p class="small muted" style="margin-top:8px">메타와 유튜브 광고는 원드라마 계정 이름으로 나간다. 검색과 디스플레이는 연결할 SNS 계정이 없다. X(@ONEstoreDrama)는 광고 매체가 아니라 공식 계정 공유에만 쓴다.</p></div>';
   };
   Actions.setDaily = (el) => Store.update((s) => {
     const v = Math.max(0, Math.round(+el.value || 0));

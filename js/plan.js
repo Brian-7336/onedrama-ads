@@ -26,6 +26,7 @@ window.PLAN = {
       source: 'meta', medium: 'paid_social', search: false,
       placements: ['reels', 'story', 'feed'],
       creatives: ['v15a', 'v15b', 'v60a', 'im01', 'im02'],
+      accounts: ['인스타그램 @onestoredrama', '페이스북 원드라마', '스레드 @onestoredrama'],
     },
     {
       id: 'youtube', name: '유튜브', product: '쇼츠, 인스트림(건너뛰기 가능), 범퍼', goal: '첫 재생, 조회',
@@ -34,6 +35,7 @@ window.PLAN = {
       source: 'youtube', medium: 'paid_social', search: false,
       placements: ['shorts', 'instream', 'bumper'],
       creatives: ['v06', 'v15a', 'v15b', 'v30a', 'v60a'],
+      accounts: ['유튜브 원드라마'],
     },
     {
       id: 'naver', name: '네이버 검색', product: '파워링크', goal: '유입',
