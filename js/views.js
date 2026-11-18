@@ -52,7 +52,7 @@
 
   // 화면에만 쓰는 상태 (저장하지 않음)
   const ui = {
-    works: { q: '', cp: '', genre: '', trailer: false, free3: false },
+    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false },
     report: { tab: 'media', from: '', to: '', media: '' },
     form: { date: '', media: 'meta', work: '', creative: '', imp: '', clk: '', start: '', ep3: '', pay: '', cost: '' },
     links: { media: '' },
@@ -242,8 +242,15 @@
     const cps = [...new Set(cands.map((w) => w.cp))];
     const genres = [...new Set(cands.map((w) => w.genre))];
     const q = f.q.trim().toLowerCase();
-    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3));
+    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
     const full = picked.length >= 5;
+    const recRows = Object.keys(P.recommended).map((title) => {
+      const w = WORKS_DATA.find((x) => x.title === title) || {};
+      const on = picked.some((x) => x.title === title);
+      return '<tr><td>' + h(title) + '</td><td>' + h(w.cp || '') + '</td><td class="wrap">' + h(P.recommended[title]) + '</td><td>' +
+        (w.cand ? '<span class="tag ok">광고 가능</span>' : '<span class="tag bad">' + h(w.status || '목록에 없음') + '</span>') + '</td><td class="num">' +
+        (on ? '<span class="tag accent">고름</span>' : w.cand ? '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(title) + '"' + (full ? ' disabled' : '') + '>고르기</button>' : '<span class="small muted">공개 여부 확인 필요</span>') + '</td></tr>';
+    }).join('');
 
     const pickedHtml = picked.length ? '<div class="tablewrap"><table><thead><tr><th>코드</th><th>작품</th><th>CP</th><th class="num">회차</th><th class="num">무료</th><th>랜딩 주소 (작품 상세 페이지)</th><th></th></tr></thead><tbody>' +
       picked.map((w) => {
@@ -255,16 +262,19 @@
 
     return head('작품', '광고 후보 ' + cands.length + '편 (상용 등록, 청불 제외) 중 3~5편을 고른다. CP 홍보 허락 범위는 따로 확인한다.') +
       '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml + '</div>' +
+      '<div class="card"><h2>CP 추천 작품 <span class="muted small">스튜디오지니 회신 11/17</span></h2><div class="tablewrap"><table><thead><tr><th>작품</th><th>CP</th><th>반응 좋았던 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
+        '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>' +
       '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편</span></h2>' +
         '<div class="filters"><input type="search" id="worksQ" placeholder="작품명 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명 검색">' +
           '<select data-chg="filterWorks" data-key="cp" aria-label="CP">' + opt('', 'CP 전체', f.cp) + cps.map((c) => opt(c, c, f.cp)).join('') + '</select>' +
           '<select data-chg="filterWorks" data-key="genre" aria-label="장르">' + opt('', '장르 전체', f.genre) + genres.map((c) => opt(c, c, f.genre)).join('') + '</select>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="trailer"' + (f.trailer ? ' checked' : '') + '> 예고편 있음</label>' +
-          '<label><input type="checkbox" data-chg="filterWorks" data-key="free3"' + (f.free3 ? ' checked' : '') + '> 무료 3화 이상</label></div>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="free3"' + (f.free3 ? ' checked' : '') + '> 무료 3화 이상</label>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="rec"' + (f.rec ? ' checked' : '') + '> CP 추천</label></div>' +
         '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th></th></tr></thead><tbody>' +
           (list.length ? list.map((w) => {
             const on = pickedTitles.has(w.cp + '|' + w.title);
-            return '<tr><td>' + h(w.title) + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td>' +
+            return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td>' +
               '<td class="num">' + (on ? '<span class="tag accent">고름</span>' : '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(w.title) + '"' + (full ? ' disabled title="5편까지 고를 수 있습니다"' : '') + '>고르기</button>') + '</td></tr>';
           }).join('') : '<tr><td colspan="8" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
         '</tbody></table></div></div>';
@@ -506,6 +516,8 @@
         '<h3>예상 성과 (참고)</h3>' + kv([['노출', n(P.forecast.impressions) + '회'], ['첫 재생', n(P.forecast.starts) + '회 (노출의 3%)'], ['첫 재생당 비용', won(P.forecast.costPerStart)]]) +
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
+      '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
+      '<div class="card"><h2>공식 SNS 연계 (사업TF)</h2>' + kv(P.sns.support) + '<h3>원드라마 계정</h3>' + kv(P.sns.accounts) + '</div></div>' +
       '<div class="card"><h2>아직 정하지 않은 것</h2>' + P.openQuestions.map((q) => '<div class="check"><span class="t">' + h(q) + '</span></div>').join('') + '</div>' +
       '<div class="card"><h2>용어</h2>' + kv(P.glossary) + '</div>';
   };
