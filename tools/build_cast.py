@@ -105,7 +105,8 @@ for t in order:
         urls = insta_urls(a.get('sns', ''))
         c = dict(w)                                   # 웹 조사에서 찾은 그룹·팬클럽·팬카페 등은 그대로 살린다
         c.update({'name': name, 'character': a.get('character', '') or w.get('character', ''),
-                  'role': next((v for k, v in KIND if k in a.get('kind', '')), '출연'),
+                  'role': next((v for k, v in KIND if k in a.get('kind', '')), w.get('role') if w.get('role') in ('주연', '조연') else '출연'),
+                  'role_src': '메타' if any(k in a.get('kind', '') for k, v in KIND) else ('웹 조사' if w.get('role') in ('주연', '조연') else ''),
                   'confidence': 'high', 'source': 'CP 메타', 'portrait': portrait, 'sns_raw': a.get('sns', '').replace('\n', ' ')})
         if urls:
             c['instagram'] = ' '.join(urls)           # 메타의 계정을 우선한다
@@ -122,6 +123,31 @@ for t in order:
 for t in order:
     for c in works[t].get('cast', []):
         c.setdefault('source', '웹 조사')
+
+# ---------- 주연·조연 나누기 ----------
+# 1) 메타에 주연/조연이 적혀 있으면 그대로. 2) 웹 조사에 있으면 그것. 3) 둘 다 없으면 적힌 순서로 추정:
+#    출연진 표는 주연부터 적는 것이 보통이라 앞의 2명을 주연, 나머지를 조연으로 본다 (추정 표시를 붙인다).
+n_guess = 0
+for t in order:
+    cast = works[t].get('cast', [])
+    has_lead = any(c.get('role') == '주연' for c in cast)
+    k = 0
+    for c in cast:
+        r = c.get('role') or ''
+        if r in ('주연', '조연', '특별출연'):
+            c['lead'] = '주연' if r == '주연' else ('특별출연' if r == '특별출연' else '조연')
+            c['lead_src'] = c.get('role_src') or ('웹 조사' if c.get('source') == '웹 조사' else '메타')
+        else:
+            c['lead'] = '조연' if has_lead or k >= 2 else '주연'
+            c['lead_src'] = '순서로 추정'
+            k += 1
+            n_guess += 1
+        c['role'] = c['lead'] + (' (추정)' if c['lead_src'] == '순서로 추정' else '')
+    order_of = {'주연': 0, '특별출연': 1, '조연': 2}
+    cast.sort(key=lambda c: order_of[c['lead']])          # 주연 → 특별출연 → 조연. 같은 구분 안에서는 원래 순서 유지
+allc = [c for t in order for c in works[t].get('cast', [])]
+print('lead', sum(1 for c in allc if c['lead'] == '주연'), 'support', sum(1 for c in allc if c['lead'] == '조연'),
+      'special', sum(1 for c in allc if c['lead'] == '특별출연'), 'guessed', n_guess)
 print('meta matched', n_meta, 'with cast', n_meta_cast, 'no meta', [t for t in order if not works[t]['meta']])
 
 rows = [works[t] for t in order]
@@ -206,22 +232,23 @@ def sheet(ws, header, data, widths):
 
 ws = wb.active
 ws.title = '작품별 요약'
-sheet(ws, ['CP', '작품', '출시일', '출시일 구분', '공개 플랫폼', '출시일 확신도', '배우 확인', '작품 확신도', '출연 배우', '팬덤 있는 출연자 (그룹)', '비고', '근거'],
+sheet(ws, ['CP', '작품', '출시일', '출시일 구분', '공개 플랫폼', '출시일 확신도', '배우 확인', '작품 확신도', '주연', '조연·특별출연', '팬덤 있는 출연자 (그룹)', '비고', '근거'],
       [[x['cp'], x['title'], rel(x['title'], 'release_date'), rel(x['title'], 'kind'), rel(x['title'], 'platform'), CONF.get(rel(x['title'], 'confidence'), ''), 'O' if ok(x) else '', CONF.get(x.get('work_confidence'), '') if ok(x) else '',
-        ', '.join(c['name'] for c in x.get('cast', [])),
+        ', '.join(c['name'] + ('*' if c.get('lead_src') == '순서로 추정' else '') for c in x.get('cast', []) if c.get('lead') == '주연'),
+        ', '.join(c['name'] + ('*' if c.get('lead_src') == '순서로 추정' else '') for c in x.get('cast', []) if c.get('lead') != '주연'),
         ', '.join(c['name'] + ' (' + c['group'] + ')' for c in x.get('cast', []) if c.get('group')),
         x.get('note', ''), '\n'.join(x.get('work_sources', [])[:3])] for x in rows],
-      [14, 30, 12, 16, 22, 10, 9, 11, 40, 40, 60, 50])
+      [14, 30, 12, 16, 22, 10, 9, 11, 26, 40, 40, 60, 50])
 
 ws = wb.create_sheet('배우별 상세')
-sheet(ws, ['CP', '작품', '배우', '구분', '배역', '출처', '초상권 계약 정보 (CP 메타)', '그룹', '소속사', '인스타그램', 'X', '유튜브', '틱톡',
+sheet(ws, ['CP', '작품', '배우', '구분', '구분 근거', '배역', '출처', '초상권 계약 정보 (CP 메타)', '그룹', '소속사', '인스타그램', 'X', '유튜브', '틱톡',
            '팬클럽', '팬카페', '그 밖의 팬 채널', '팔로워 메모', '확신도', '근거'],
-      [[x['cp'], x['title'], c.get('name', ''), c.get('role', ''), c.get('character', ''), c.get('source', ''), c.get('portrait', ''), c.get('group', ''), c.get('agency', ''),
+      [[x['cp'], x['title'], c.get('name', ''), c.get('lead', ''), c.get('lead_src', ''), c.get('character', ''), c.get('source', ''), c.get('portrait', ''), c.get('group', ''), c.get('agency', ''),
         c.get('instagram', ''), c.get('x', ''), c.get('youtube', ''), c.get('tiktok', ''),
         c.get('fanclub', ''), c.get('fancafe', ''), c.get('other_fan_channels', ''), c.get('followers_note', ''),
         CONF.get(c.get('confidence'), ''), '\n'.join(c.get('sources', [])[:3])]
        for x in rows for c in x.get('cast', [])],
-      [14, 28, 16, 9, 14, 10, 40, 24, 22, 36, 30, 36, 30, 18, 36, 36, 26, 8, 50])
+      [14, 28, 16, 9, 12, 14, 10, 40, 24, 22, 36, 30, 36, 30, 18, 36, 36, 26, 8, 50])
 
 ws = wb.create_sheet('팬 채널 있는 출연자')
 sheet(ws, ['CP', '작품', '배우', '그룹', '팬클럽', '팬카페', '그 밖의 팬 채널', '인스타그램', 'X', '확신도'],
@@ -250,6 +277,7 @@ sheet(ws, ['CP', '작품', '비고'], [[x['cp'], x['title'], x.get('note', '')] 
 ws = wb.create_sheet('읽어보기')
 for line in [
     '광고 후보 129편의 출연 배우와 팬 채널입니다. 기준은 CP가 납품한 메타 파일(나스 「00. 타이틀별 메타_all」)이고, 메타에 없는 항목(그룹, 팬클럽, 팬카페, 메타에 출연진이 없는 작품)만 웹 조사로 채웠습니다.',
+    '주연·조연: 메타에 적힌 구분을 따릅니다. 메타에 「출연」으로만 적힌 작품은 웹 조사의 구분을 쓰고, 그것도 없으면 적힌 순서의 앞 2명을 주연으로 추정했습니다(「구분 근거」 열이 「순서로 추정」, 요약 시트에서는 이름 뒤 *).',
     '「출처」 열: CP 메타 = 납품 메타 파일에 적힌 배우, 웹 조사 = 웹에서 찾은 배우(검증 안 됨). 초상권 계약 정보는 메타에 적힌 문구 그대로입니다.',
     '출시일: 작품이 처음 공개된 날입니다(원드라마 등록일이 아님). 세로본능 작품은 원작 영화·드라마의 개봉·방영일입니다. 연도나 월까지만 확인된 것은 그만큼만 적었습니다.',
     '확신도: 높음 = 기사·공식 자료로 확인, 보통 = 이용자 편집 DB(TMDB, 나무위키) 한 곳에만 근거, 낮음 = 동명 작품·동명이인 가능성 있음.',
@@ -265,7 +293,7 @@ out = os.path.join(root, '원드라마_출연배우_팬채널.xlsx')
 wb.save(out)
 
 # 사이트용: 작품명 → 배우 목록 (공개 채널만)
-keys = ['name', 'role', 'character', 'group', 'agency', 'fanclub', 'confidence', 'source']
+keys = ['name', 'role', 'lead', 'character', 'group', 'agency', 'fanclub', 'confidence', 'source']
 data = {x['title']: {'conf': x.get('work_confidence', ''), 'note': x.get('note', ''),
                      'cast': [dict({k: c.get(k, '') for k in keys if c.get(k)}, links=links(c)) for c in x.get('cast', [])]}
         for x in rows if ok(x)}

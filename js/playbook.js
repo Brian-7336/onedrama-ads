@@ -81,7 +81,7 @@
   // 검색광고 키워드 추천
   function keywords(w, p) {
     const k = [w.title, w.title + ' 드라마', w.title + ' 숏드라마', w.title + ' 다시보기'];
-    p.cast.filter((c) => c.role !== '조연').slice(0, 3).forEach((c) => { k.push(plain(c.name) + ' 드라마', plain(c.name) + ' ' + w.title); });
+    (p.cast.some((c) => c.lead === '주연') ? p.cast.filter((c) => c.lead === '주연') : p.cast).slice(0, 3).forEach((c) => { k.push(plain(c.name) + ' 드라마', plain(c.name) + ' ' + w.title); });
     [...new Set(p.fans.filter((c) => c.group).map((c) => shortGroup(c.group)))].slice(0, 2).forEach((g) => { if (g) k.push(g + ' 드라마'); });
     return [...new Set(k)];
   }

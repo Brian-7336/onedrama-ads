@@ -262,7 +262,15 @@
   const CAST = window.CAST || {};
   const castOf = (title) => (CAST[title] || {}).cast || [];
   const hasFandom = (title) => castOf(title).some((c) => c.group || c.fanclub || hasFanLink(c));
-  const castNames = (title) => castOf(title).map((c) => h(c.name) + (c.group ? ' <span class="tag accent" title="' + h(c.group) + '">' + h(c.group.split(/[,(]/)[0].replace(/^\(전\)\s*/, '').trim()) + '</span>' : '')).join(', ');
+  const castName = (c) => h(c.name) + (/추정/.test(c.role || '') ? '<span class="muted" title="메타에 주연·조연 구분이 없어 적힌 순서로 추정">*</span>' : '') + (c.group ? ' <span class="tag accent" title="' + h(c.group) + '">' + h(c.group.split(/[,(]/)[0].replace(/^\(전\)\s*/, '').trim()) + '</span>' : '');
+  // 후보 목록의 출연 칸: 주연과 조연을 나눠서 보여 준다.
+  const castNames = (title) => {
+    const cs = castOf(title);
+    const lead = cs.filter((c) => c.lead === '주연');
+    const rest = cs.filter((c) => c.lead !== '주연');
+    return (lead.length ? '<span class="castline"><span class="tag ok">주연</span> ' + lead.map(castName).join(', ') + '</span>' : '') +
+      (rest.length ? '<span class="castline"><span class="tag">조연</span> ' + rest.map(castName).join(', ') + '</span>' : '');
+  };
   const FAN_LABELS = ['다음 팬카페', '네이버 팬카페', '팬카페', '위버스', '프롬', '패니콘', '공식 사이트'];
   const hasFanLink = (c) => (c.links || []).some((l) => FAN_LABELS.includes(l[0]));
   const castLinks = (c) => (c.links || []).filter((l) => /^https?:\/\//.test(l[1]))

@@ -434,3 +434,7 @@ tr.dropping > td { background: var(--accent-soft); box-shadow: inset 0 2px 0 var
 .clog { margin-top: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg); font-size: 12px; line-height: 1.6; max-height: 190px; overflow-y: auto; font-variant-numeric: tabular-nums; }
 .clog .ok { color: var(--ok); }
 .clog .bad { color: var(--bad); }
+
+/* 출연 칸: 주연·조연 줄 나눔 */
+.castline { display: block; line-height: 1.7; }
+.castline + .castline { margin-top: 2px; color: var(--muted); }
