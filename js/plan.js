@@ -6,6 +6,14 @@ window.PLAN = {
   budget: 9000000, // VAT 별도
   campaign: 'dec_1201',
   site: 'https://drama.onestore.co.kr',
+  // 자주 여는 곳
+  tools: [
+    { name: 'GA4', url: 'https://analytics.google.com/', note: '첫 재생, 3화 시청, 결제' },
+    { name: '원드라마', url: 'https://drama.onestore.co.kr', note: '랜딩 확인' },
+    { name: '인스타그램 @onestoredrama', url: 'https://www.instagram.com/onestoredrama/', note: '원드라마 계정' },
+    { name: '스레드 @onestoredrama', url: 'https://www.threads.net/@onestoredrama', note: '원드라마 계정' },
+    { name: 'X @ONEstoreDrama', url: 'https://x.com/ONEstoreDrama', note: '원드라마 계정' },
+  ],
   team: [
     { role: '총괄', name: '권오성' },
     { role: '매체 운영', name: '브라이언' },
@@ -20,6 +28,7 @@ window.PLAN = {
   ],
   media: [
     {
+      ad: { name: '메타 광고 관리자', url: 'https://adsmanager.facebook.com/adsmanager/manage/campaigns' },
       id: 'meta', name: '메타', product: '릴스, 스토리', goal: '첫 재생(웹 전환)',
       target: '25~44세 여성, 드라마·웹툰 관심사', billing: '노출(CPM)', budget: 4000000,
       daily: { test: 44000, main: 182000, xmas: 240000, wrap: 67000 },
@@ -29,6 +38,7 @@ window.PLAN = {
       accounts: ['인스타그램 @onestoredrama', '페이스북 원드라마', '스레드 @onestoredrama'],
     },
     {
+      ad: { name: '구글 애즈', url: 'https://ads.google.com/aw/campaigns' },
       id: 'youtube', name: '유튜브', product: '쇼츠, 인스트림(건너뛰기 가능), 범퍼', goal: '첫 재생, 조회',
       target: '25~44세 여성', billing: '조회·노출', budget: 2500000,
       daily: { test: 28000, main: 114000, xmas: 150000, wrap: 42000 },
@@ -38,6 +48,7 @@ window.PLAN = {
       accounts: ['유튜브 원드라마'],
     },
     {
+      ad: { name: '네이버 검색광고', url: 'https://searchad.naver.com/' },
       id: 'naver', name: '네이버 검색', product: '파워링크', goal: '유입',
       target: '작품명, 「숏드라마」「원드라마」 키워드', billing: '클릭(CPC)', budget: 800000,
       daily: { test: 9000, main: 36000, xmas: 48000, wrap: 13000 },
@@ -46,6 +57,7 @@ window.PLAN = {
       creatives: ['brand', 'title', 'genre'],
     },
     {
+      ad: { name: '구글 애즈', url: 'https://ads.google.com/aw/campaigns' },
       id: 'gsearch', name: '구글 검색', product: '검색 광고', goal: '유입',
       target: '작품명, 숏드라마 장르 키워드', billing: '클릭(CPC)', budget: 700000,
       daily: { test: 8000, main: 32000, xmas: 42000, wrap: 12000 },
@@ -54,6 +66,7 @@ window.PLAN = {
       creatives: ['title', 'genre'],
     },
     {
+      ad: { name: '구글 애즈', url: 'https://ads.google.com/aw/campaigns' },
       id: 'gdn', name: '구글 디스플레이', product: '리마케팅 배너', goal: '다시 부르기',
       target: '사이트 왔다가 안 본 사람, 중간에 그만둔 사람', billing: '클릭·노출', budget: 1000000,
       daily: { test: 11000, main: 45000, xmas: 60000, wrap: 17000 },

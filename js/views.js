@@ -12,6 +12,7 @@
   const bar = (ratio, cls) => '<div class="bar ' + (cls || '') + '"><i style="width:' + Math.max(0, Math.min(100, ratio * 100)).toFixed(1) + '%"></i></div>';
   const dot = (m) => '<span class="dot" style="background:var(--m-' + m.id + ')"></span>';
   const head = (title, sub, actions) => '<div class="head"><div><h1>' + h(title) + '</h1><p>' + sub + '</p></div><div class="actions">' + (actions || '') + '</div></div>';
+  const ext = (url, label, cls) => '<a class="btn ' + (cls || '') + '" href="' + h(url) + '" target="_blank" rel="noopener noreferrer">' + h(label) + ' ↗</a>';
   const opt = (value, label, cur) => '<option value="' + h(value) + '"' + (String(cur) === String(value) ? ' selected' : '') + '>' + h(label) + '</option>';
 
   function toast(msg) {
@@ -123,12 +124,14 @@
         '<div class="card stat"><div class="label">결제</div><div class="value">' + n(total.pay) + '</div><div class="sub">첫 재생의 ' + pct(total.payRate, 2) + '</div></div>' +
         '<div class="card stat"><div class="label">결제당 비용</div><div class="value">' + won(total.cpp) + '</div><div class="sub">매체를 끌 때 함께 본다</div></div>' +
       '</div>' +
+      '<div class="card"><h2>바로가기</h2><h3 style="margin-top:0">광고 등록·관리</h3><div class="actions">' + P.media.map((m) => '<a class="btn" href="' + h(m.ad.url) + '" target="_blank" rel="noopener noreferrer">' + dot(m) + h(m.name) + ' <span class="muted small">' + h(m.ad.name) + '</span> ↗</a>').join('') + '</div>' +
+        '<h3>측정·확인</h3><div class="actions">' + P.tools.map((t) => ext(t.url, t.name)).join('') + '</div></div>' +
       '<div class="card"><h2>12월 일정</h2><div class="timeline">' + timeline + '</div>' +
         '<div class="small muted">' + P.phases.map((ph) => h(ph.name) + ' ' + md(ph.start) + '~' + md(ph.end) + ' (' + pct(ph.share, 0) + ')').join(' · ') + '</div></div>' +
       '<div class="grid g2">' +
         '<div class="card"><h2>' + (showPhase ? h(showPhase.name) + ' 기간 하루 예산' : '하루 예산') + '</h2>' +
-          (showPhase ? '<table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="num">' + won(Calc.daily(m.id, showPhase.id)) + '</td></tr>').join('') +
-            '<tr class="total"><td>합계</td><td class="num">' + won(P.media.reduce((s, m) => s + Calc.daily(m.id, showPhase.id), 0)) + '</td></tr></tbody></table>' : '<div class="empty">집행이 끝났습니다</div>') +
+          (showPhase ? '<table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="num">' + won(Calc.daily(m.id, showPhase.id)) + '</td><td class="num">' + ext(m.ad.url, m.ad.name, 'sm') + '</td></tr>').join('') +
+            '<tr class="total"><td>합계</td><td class="num">' + won(P.media.reduce((s, m) => s + Calc.daily(m.id, showPhase.id), 0)) + '</td><td></td></tr></tbody></table>' : '<div class="empty">집행이 끝났습니다</div>') +
         '</div>' +
         '<div class="card"><h2>체크리스트</h2>' +
           prog.map((p) => '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>' + h(p.sec.name) + ' <span class="muted small">' + h(p.sec.period) + '</span></span><span class="num">' + p.done + '/' + p.total + '</span></div>' + bar(p.total ? p.done / p.total : 0, 'ok') + '</div>').join('') +
@@ -220,8 +223,8 @@
       '<div class="card"><h2>매체별 계획과 집행</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th class="num">월 예산</th><th class="num">비중</th><th class="num">오늘까지 계획</th><th class="num">집행액</th><th>월 예산 대비</th><th class="num">남은 예산</th></tr></thead><tbody>' + actualRows +
         '<tr class="total"><td>합계</td><td class="num">' + won(P.budget) + '</td><td class="num">100%</td><td class="num">' + won(Calc.plannedUntil(today)) + '</td><td class="num">' + won(tot.cost) + '</td><td>' + bar(tot.cost / P.budget) + '</td><td class="num">' + won(P.budget - tot.cost) + '</td></tr></tbody></table></div></div>' +
       '<div class="card"><h2>시기별 계획과 집행</h2><div class="tablewrap"><table><thead><tr><th>시기</th><th class="num">계획</th><th class="num">집행액</th><th>계획 대비</th><th class="num">첫 재생</th><th class="num">첫 재생당</th></tr></thead><tbody>' + byPhase + '</tbody></table></div></div>' +
-      '<div class="card"><h2>매체 구성</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>상품</th><th>목적</th><th>타깃</th><th>과금</th><th>원드라마 계정</th></tr></thead><tbody>' +
-        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td><td>' + (m.accounts ? m.accounts.map(h).join('<br>') : '<span class="muted">계정 없이 집행</span>') + '</td></tr>').join('') + '</tbody></table></div><p class="small muted" style="margin-top:8px">메타와 유튜브 광고는 원드라마 계정 이름으로 나간다. 검색과 디스플레이는 연결할 SNS 계정이 없다. X(@ONEstoreDrama)는 광고 매체가 아니라 공식 계정 공유에만 쓴다.</p></div>';
+      '<div class="card"><h2>매체 구성</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>상품</th><th>목적</th><th>타깃</th><th>과금</th><th>원드라마 계정</th><th>광고 등록</th></tr></thead><tbody>' +
+        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td><td>' + (m.accounts ? m.accounts.map(h).join('<br>') : '<span class="muted">계정 없이 집행</span>') + '</td><td>' + ext(m.ad.url, m.ad.name, 'sm') + '</td></tr>').join('') + '</tbody></table></div><p class="small muted" style="margin-top:8px">메타와 유튜브 광고는 원드라마 계정 이름으로 나간다. 검색과 디스플레이는 연결할 SNS 계정이 없다. X(@ONEstoreDrama)는 광고 매체가 아니라 공식 계정 공유에만 쓴다.</p></div>';
   };
   Actions.setDaily = (el) => Store.update((s) => {
     const v = Math.max(0, Math.round(+el.value || 0));
@@ -455,6 +458,7 @@
         '<label class="field">' + (m.search ? '키워드 묶음' : '소재') + '<select data-chg="formSelect" data-key="creative">' + cOpts.map((o) => opt(o[0], o[1], f.creative)).join('') + '</select></label>' +
         numField('cost', '집행액(원)') + numField('imp', '노출') + numField('clk', '클릭') + numField('start', '첫 재생') + numField('ep3', '3화 시청') + numField('pay', '결제') +
         '<button class="primary">기록 추가</button></div></form>' +
+        '<div class="actions" style="margin-top:12px"><span class="small muted">숫자 가져올 곳</span>' + ext(m.ad.url, m.name + ' · ' + m.ad.name, 'sm') + ext(P.tools[0].url, 'GA4', 'sm') + '</div>' +
         '<details style="margin-top:12px"><summary class="small muted" style="cursor:pointer">여러 줄 한꺼번에 붙여 넣기 (CSV)</summary><p class="small muted" style="margin-top:8px">한 줄에 <code>날짜,매체,작품코드,소재,집행액,노출,클릭,첫재생,3화시청,결제</code> 순서. 매체는 meta, youtube, naver, gsearch, gdn. 엑셀에서 복사한 탭 구분도 된다.</p>' +
         '<form data-submit="importCsv"><textarea name="csv" rows="4" style="width:100%" placeholder="2026-12-01,meta,w01,v15a,22000,5200,140,96,31,2" aria-label="CSV 붙여 넣기"></textarea><div style="margin-top:6px"><button>붙여 넣은 줄 추가</button></div></form></details></div>' +
       '<div class="card"><div class="filters">' +
