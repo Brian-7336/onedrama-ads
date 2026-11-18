@@ -117,11 +117,16 @@
     const showPhase = phase || (today < P.start ? P.phases[0] : null);
 
     // 준비 단계 안내: 끝나지 않은 첫 단계를 「지금 할 일」로 보여 준다.
-    const steps = Calc.setupSteps();
-    const curStep = steps.find((x) => !x.done);
-    const setupHtml = curStep ? '<div class="card"><h2>지금 할 일 <span class="muted small">' + steps.filter((x) => x.done).length + '/' + steps.length + ' 단계 완료</span></h2>' +
-      '<ol class="steps">' + steps.map((x) => '<li class="' + (x.done ? 'done' : x === curStep ? 'cur' : '') + '"' + (x === curStep ? ' aria-current="step"' : '') + '><a href="' + x.href + '">' + h(x.t) + '</a><br><span class="small muted">' + h(x.hint) + '</span></li>').join('') + '</ol>' +
-      '<div class="next"><div class="what"><strong>' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.why) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div></div>' : '';
+    const steps = Calc.flow();
+    const curStep = steps.current;
+    const stepLi = (x) => '<li class="' + (x.done ? 'done' : x === curStep ? 'cur' : '') + '"' + (x === curStep ? ' aria-current="step"' : '') + '><a href="' + x.href + '">' + h(x.t) + '</a><br><span class="small muted">' + h(x.hint) + '</span></li>';
+    const setupHtml = '<div class="card"><h2>지금 할 일 <span class="muted small">준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 완료</span></h2>' +
+      '<h3 style="margin-top:0">준비 · 11/30까지 · 순서대로 한 번씩</h3><ol class="steps">' + steps.filter((x) => x.group === '준비').map(stepLi).join('') + '</ol>' +
+      '<h3>집행 · 12/1~31 · 되풀이</h3><ol class="steps run">' + steps.filter((x) => x.group === '집행').map(stepLi).join('') + '</ol>' +
+      (curStep
+        ? '<div class="next"><div class="what"><strong>' + curStep.n + '단계. ' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.goal) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div>'
+        : '<div class="next"><div class="what"><strong>준비가 끝났습니다</strong><span class="muted">12/1에 매체에서 광고를 켜고, 12/2부터 전날 성과를 입력합니다.</span></div></div>') + '</div>';
+    const showStats = S().reports.length > 0 || today >= P.start;   // 집행 전에는 0뿐인 숫자를 감춘다
 
     const timeline = Array.from({ length: 31 }, (_, i) => {
       const d = Calc.addDays(P.start, i);
@@ -134,7 +139,7 @@
     return head(P.title, '2026-12-01 ~ 12-31 · 판촉비 ' + won(P.budget) + ' (VAT 별도) · ' + P.team.map((t) => h(t.role) + ' ' + h(t.name)).join(', ')) +
       setupHtml +
       alerts.map((a) => '<div class="notice ' + a[0] + '">' + a[1] + '</div>').join('') +
-      '<div class="grid g4">' +
+      (!showStats ? '' : '<div class="grid g4">' +
         '<div class="card stat"><div class="label">지금</div><div class="value">' + h(status) + '</div><div class="sub">' + h(statusSub) + '</div></div>' +
         '<div class="card stat"><div class="label">집행액</div><div class="value">' + won(total.cost) + '</div>' + bar(total.cost / P.budget, total.cost > P.budget ? 'over' : '') + '<div class="sub">예산의 ' + pct(total.cost / P.budget) + ' · 오늘까지 계획 ' + won(planned) + '</div></div>' +
         '<div class="card stat"><div class="label">첫 재생</div><div class="value">' + n(total.start) + '</div>' + bar(total.start / P.forecast.starts, 'ok') + '<div class="sub">예상 ' + n(P.forecast.starts) + '회의 ' + pct(total.start / P.forecast.starts) + '</div></div>' +
@@ -145,7 +150,7 @@
         '<div class="card stat"><div class="label">3화 시청</div><div class="value">' + n(total.ep3) + '</div><div class="sub">첫 재생의 ' + pct(total.ep3Rate) + '</div></div>' +
         '<div class="card stat"><div class="label">결제</div><div class="value">' + n(total.pay) + '</div><div class="sub">첫 재생의 ' + pct(total.payRate, 2) + '</div></div>' +
         '<div class="card stat"><div class="label">결제당 비용</div><div class="value">' + won(total.cpp) + '</div><div class="sub">매체를 끌 때 함께 본다</div></div>' +
-      '</div>' +
+      '</div>') +
       '<div class="card"><h2>바로가기 <a class="small" href="#/data" style="font-weight:400">계정 설정</a></h2>' +
         (Object.values(Calc.accounts()).some(Boolean) ? '' : '<div class="notice info">계정을 설정하면 바로가기가 원드라마 계정으로 열립니다. <a href="#/data">계정 설정</a></div>') +
         '<h3 style="margin-top:0">광고 등록·관리</h3><div class="actions">' + P.media.map((m) => '<a class="btn" href="' + h(Calc.adUrl(m)) + '" target="_blank" rel="noopener noreferrer" title="' + h(Calc.adAccount(m) || '계정 미설정') + '">' + dot(m) + h(m.name) + ' <span class="muted small">' + h(Calc.adAccount(m) || m.ad.name) + '</span> ↗</a>').join('') + '</div>' +
@@ -162,7 +167,7 @@
           (todo.length ? '<h3>다음 할 일</h3>' + todo.map((t) => '<label class="check"><input type="checkbox" data-chg="toggleCheck" data-id="' + h(t.i.id) + '"><span class="t">' + h(t.i.text) + (t.i.owner ? ' <span class="tag">' + h(t.i.owner) + '</span>' : '') + '</span></label>').join('') : '<div class="notice ok">모든 항목을 마쳤습니다</div>') +
         '</div>' +
       '</div>' +
-      Views.mediaTable('매체별 성과', Calc.groupBy(S().reports, (r) => r.media));
+      (showStats ? Views.mediaTable('매체별 성과', Calc.groupBy(S().reports, (r) => r.media)) : '');
   };
 
   // 매체별 성과 표 (대시보드와 리포트에서 같이 쓴다)

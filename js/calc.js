@@ -118,23 +118,58 @@
       });
     },
 
-    // 준비 단계. 대시보드에서 「지금 할 일」을 알려 주는 데 쓴다.
-    setupSteps() {
+    // 전체 흐름 8단계. 메뉴 순서, 화면 위 단계 띠, 홈의 「지금 할 일」이 모두 이것을 쓴다.
+    // 준비 5단계는 끝나면 완료로 남고, 집행 3단계는 되풀이하는 일이다.
+    flow() {
       const st = Store.state;
       const works = st.works;
       const keys = works.flatMap((w) => Calc.creativeIds(w.code).map((id) => w.code + '_' + id));
       const ready = keys.filter((k) => ['검수 중', '집행 중', '꺼짐'].includes((st.creatives[k] || {}).status)).length;
       const withUrl = works.filter((w) => w.url).length;
       const reg = window.Register ? window.Register.progress() : { done: 0, total: 0 };
-      return [
-        { t: '작품 3~5편 고르기', href: '#/works', done: works.length >= 3, hint: works.length + '편 고름', cta: '작품 고르기', why: 'CP 추천 3편은 표에서 바로 고를 수 있습니다.' },
-        { t: '랜딩 주소 넣기', href: '#/works', done: works.length > 0 && withUrl === works.length, hint: withUrl + '/' + works.length + '편', cta: '주소 넣기', why: '작품 상세 페이지 주소가 있어야 광고 링크가 만들어집니다.' },
-        { t: '소재 받고 검수하기', href: '#/creatives', done: keys.length > 0 && ready === keys.length, hint: ready + '/' + keys.length + '종', cta: '소재 보기', why: '소재마다 상태와 내용을 정하고 검수 항목을 확인합니다.' },
-        { t: '링크 규칙 확정하기', href: '#/links', done: !!(st.checks.p06 && st.checks.p08), hint: '위키 표, 유튜브 medium', cta: '링크 태그 보기', why: '위키 표에 값을 추가하고 유튜브 medium을 정한 뒤 체크리스트에서 체크합니다.' },
-        { t: '매체에 광고 등록하기', href: '#/register', done: reg.total > 0 && reg.done === reg.total, hint: reg.done + '/' + reg.total + '건', cta: '광고 등록하기', why: '문구와 키워드를 채우고 등록 파일을 내려받아 매체에 올립니다.' },
-        { t: '성과 입력 시작하기', href: '#/report', done: st.reports.length > 0, hint: '12/2부터 매일', cta: '성과 입력하기', why: '전날 성과를 넣으면 분석과 추천이 만들어집니다.' },
+      const pc = st.planChecks || {};
+      const confirmed = works.filter((w) => { const m = pc[w.cp + '|' + w.title] || {}; return m.perm && m.cast; }).length;
+      const manual = st.flowDone || {};
+      const today = Calc.today();
+      const started = today >= P.start;
+      const yest = Calc.addDays(today, -1);
+      const hasYest = st.reports.some((r) => r.date === yest);
+      const flags = Calc.killFlags().length;
+      const steps = [
+        { route: 'works', t: '작품 고르기', group: '준비', done: works.length >= 3 && withUrl === works.length,
+          hint: works.length + '편 고름 · 주소 ' + withUrl + '/' + works.length, cta: '작품 고르기',
+          goal: '광고할 작품 3~5편을 고르고, 작품마다 랜딩 주소를 넣습니다.' },
+        { route: 'playbook', t: '작품별 계획', group: '준비', done: works.length > 0 && confirmed === works.length,
+          hint: 'CP 확인 ' + confirmed + '/' + works.length + '편', cta: '계획 보기',
+          goal: '작품마다 추천 광고 방법을 읽고, CP에 홍보 허락 범위와 출연진을 확인해 체크합니다.' },
+        { route: 'creatives', t: '소재 준비', group: '준비', done: keys.length > 0 && ready === keys.length,
+          hint: '검수 ' + ready + '/' + keys.length + '종', cta: '소재 보기',
+          goal: '소재마다 내용과 상태를 정하고 검수를 끝냅니다.' },
+        { route: 'links', t: '링크 태그', group: '준비', manual: true, done: !!(st.checks.p06 && st.checks.p08) || !!manual.links,
+          hint: '꼬리표 규칙 확정', cta: '링크 만들기',
+          goal: '링크 꼬리표 규칙을 확정하고, 광고에 넣을 링크를 복사합니다.' },
+        { route: 'register', t: '광고 등록', group: '준비', done: reg.total > 0 && reg.done === reg.total,
+          hint: '등록 ' + reg.done + '/' + reg.total + '건', cta: '광고 등록하기',
+          goal: '문구와 키워드를 채우고 등록 파일을 매체에 올립니다. 광고는 꺼진 상태로 올리고 12/1에 켭니다.' },
+        { route: 'report', t: '성과 입력', group: '집행', repeat: '매일', done: started && hasYest,
+          hint: started ? (hasYest ? '어제 기록 있음' : '어제 기록 없음') : '12/2부터 매일', cta: '성과 입력하기',
+          goal: '전날 성과를 매체·작품·소재별로 넣습니다. 하루 5분이면 됩니다.' },
+        { route: 'insights', t: '분석·추천', group: '집행', repeat: '매주', done: false,
+          hint: flags ? '끄기 후보 ' + flags + '개' : '주 1회 확인', cta: '분석 보기',
+          goal: '무엇이 잘 되는지 보고, 끌 소재와 다음 주에 만들 소재를 정합니다.' },
+        { route: 'budget', t: '예산 조정', group: '집행', repeat: '시기마다', done: false,
+          hint: '시기가 바뀔 때', cta: '예산 보기',
+          goal: '집행액이 계획대로 가는지 보고 하루 예산을 조정합니다.' },
       ];
+      steps.forEach((x, i) => { x.n = i + 1; x.href = '#/' + x.route; });
+      const prep = steps.filter((x) => x.group === '준비');
+      steps.prepDone = prep.filter((x) => x.done).length;
+      steps.prepTotal = prep.length;
+      // 지금 할 단계: 끝나지 않은 첫 준비 단계. 준비가 끝났고 집행 중이면 성과 입력.
+      steps.current = prep.find((x) => !x.done) || (started ? steps[5] : null);
+      return steps;
     },
+    setupSteps() { return Calc.flow(); },
 
     // 바로가기: 계정 설정이 있으면 그 계정으로 열리게 주소를 만든다.
     // 비밀번호는 다루지 않는다. 로그인 자체는 각 사이트와 브라우저가 한다.

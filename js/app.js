@@ -14,21 +14,22 @@
     guide: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11',
     data: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6',
   };
-  // [주소, 이름, 화면, 묶음]
+  // [주소, 이름, 화면, 묶음]. 준비·집행은 Calc.flow() 의 순서와 같다.
   const ROUTES = [
-    ['', '대시보드', 'dashboard', ''],
-    ['checklist', '체크리스트', 'checklist', '준비'],
-    ['works', '작품', 'works', '준비'],
+    ['', '홈', 'dashboard', ''],
+    ['works', '작품 고르기', 'works', '준비'],
     ['playbook', '작품별 계획', 'playbook', '준비'],
-    ['creatives', '소재', 'creatives', '준비'],
+    ['creatives', '소재 준비', 'creatives', '준비'],
     ['links', '링크 태그', 'links', '준비'],
     ['register', '광고 등록', 'register', '준비'],
-    ['budget', '예산', 'budget', '운영'],
-    ['report', '성과 리포트', 'report', '운영'],
-    ['insights', '분석·추천', 'insights', '운영'],
+    ['report', '성과 입력', 'report', '집행'],
+    ['insights', '분석·추천', 'insights', '집행'],
+    ['budget', '예산 조정', 'budget', '집행'],
+    ['checklist', '전체 체크리스트', 'checklist', '참고'],
     ['guide', '운영 가이드', 'guide', '참고'],
     ['data', '데이터·계정', 'data', '참고'],
   ];
+  const GROUP_NOTE = { 준비: '11/30까지', 집행: '12/1~31' };
   const $ = (id) => document.getElementById(id);
   const view = $('view');
   const nav = $('nav');
@@ -43,23 +44,28 @@
     const s = Store.state;
     const prog = Calc.checklistProgress().reduce((a, p) => ({ d: a.d + p.done, t: a.t + p.total }), { d: 0, t: 0 });
     const flags = Calc.killFlags().length;
+    const pb = window.Playbook.progress();
     return {
       checklist: [prog.d + '/' + prog.t, prog.d === prog.t ? 'ok' : ''],
-      works: [s.works.length + '편', s.works.length >= 3 ? 'ok' : 'warn'],
-      playbook: (() => { const p = window.Playbook.progress(); return p.total ? [p.done + '/' + p.total, p.done === p.total ? 'ok' : ''] : null; })(),
+      works: s.works.length ? [s.works.length + '편', s.works.length >= 3 ? 'ok' : 'warn'] : null,
+      playbook: pb.total ? [pb.done + '/' + pb.total, pb.done === pb.total ? 'ok' : ''] : null,
       report: s.reports.length ? [s.reports.length + '줄', ''] : null,
       insights: flags ? ['끄기 ' + flags, 'bad'] : null,
     };
   }
 
-  function renderChrome(route) {
+  function renderChrome(route, flow) {
     const b = badges();
     let group = null;
     nav.innerHTML = ROUTES.map((r) => {
-      const headHtml = r[3] !== group && r[3] ? '<div class="nav-group">' + r[3] + '</div>' : '';
+      const headHtml = r[3] !== group && r[3] ? '<div class="nav-group">' + r[3] + (GROUP_NOTE[r[3]] ? ' <span>' + GROUP_NOTE[r[3]] + '</span>' : '') + '</div>' : '';
       group = r[3];
       const bd = b[r[2]];
-      return headHtml + '<a href="#/' + r[0] + '"' + (r === route ? ' class="on" aria-current="page"' : '') + '>' + icon(r[2]) + '<span>' + r[1] + '</span>' +
+      const st = flow.find((x) => x.route === r[0]);
+      // 단계 화면은 아이콘 대신 번호를 보여 준다. 끝난 단계는 ✓, 지금 할 단계는 강조.
+      const mark = st ? '<span class="num-dot' + (st.done ? ' done' : st === flow.current ? ' cur' : '') + '" aria-hidden="true">' + (st.done ? '✓' : st.n) + '</span>' : icon(r[2]);
+      const sr = st ? '<span class="sr-only">' + (st.done ? '완료. ' : st === flow.current ? '지금 할 단계. ' : '') + st.n + '단계 </span>' : '';
+      return headHtml + '<a href="#/' + r[0] + '"' + (r === route ? ' class="on" aria-current="page"' : '') + '>' + mark + '<span>' + sr + r[1] + '</span>' +
         (bd ? '<span class="count ' + bd[1] + '">' + bd[0] + '</span>' : '') + '</a>';
     }).join('');
 
@@ -72,9 +78,35 @@
     document.title = route[1] + ' · 원드라마 광고 집행 관리';
   }
 
+  // 단계 화면 맨 위에 붙는 띠: 지금 몇 단계인지, 이 화면에서 할 일, 이전·다음 단계.
+  function stepBar(route, flow) {
+    const i = flow.findIndex((x) => x.route === route[0]);
+    if (i < 0) return '';
+    const st = flow[i];
+    const prev = flow[i - 1];
+    const next = flow[i + 1];
+    const same = flow.filter((x) => x.group === st.group);
+    const state = st.repeat ? '<span class="tag">' + st.repeat + ' 하는 일</span>'
+      : st.done ? '<span class="tag ok">끝남</span>' : '<span class="tag warn">할 일 남음</span>';
+    const manualBtn = st.manual ? ' <button class="link-btn" data-act="flowToggle" data-route="' + st.route + '">' + (st.done ? '끝냄 취소' : '이 단계 끝냄으로 표시') + '</button>' : '';
+    return '<nav class="stepbar" aria-label="진행 단계">' +
+      '<div class="sb-main"><div class="sb-pos">' + st.group + ' ' + (same.indexOf(st) + 1) + '/' + same.length + ' · ' + st.n + '단계 ' + state + '</div>' +
+        '<div class="sb-goal">' + st.goal + ' <span class="muted">(' + st.hint + ')</span>' + manualBtn + '</div></div>' +
+      '<div class="sb-nav">' +
+        (prev ? '<a class="btn ghost sm" href="' + prev.href + '">← ' + prev.n + '. ' + prev.t + '</a>' : '<a class="btn ghost sm" href="#/">← 홈</a>') +
+        (next ? '<a class="btn sm' + (st.done || st.repeat ? ' primary' : '') + '" href="' + next.href + '">다음: ' + next.n + '. ' + next.t + ' →</a>' : '') +
+      '</div></nav>';
+  }
+  Actions.flowToggle = (el) => Store.update((s) => {
+    s.flowDone = s.flowDone || {};
+    if (Calc.flow().find((x) => x.route === el.dataset.route).done) { delete s.flowDone[el.dataset.route]; if (el.dataset.route === 'links') { delete s.checks.p06; delete s.checks.p08; } }
+    else s.flowDone[el.dataset.route] = true;
+  });
+
   function render(keepScroll) {
     const route = current();
-    renderChrome(route);
+    const flow = Calc.flow();
+    renderChrome(route, flow);
 
     // 다시 그려도 입력 중이던 칸과 스크롤 위치를 지킨다.
     const active = document.activeElement;
@@ -83,7 +115,7 @@
     const y = window.scrollY;
     const inner = [...view.querySelectorAll('[style*="overflow-y"]')].map((el) => el.scrollTop);
 
-    view.innerHTML = Views[route[2]]();
+    view.innerHTML = stepBar(route, flow) + Views[route[2]]();
     view.dataset.route = route[2];
 
     if (keepScroll) {
