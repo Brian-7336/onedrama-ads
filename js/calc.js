@@ -127,9 +127,8 @@
       const ready = keys.filter((k) => ['검수 중', '집행 중', '꺼짐'].includes((st.creatives[k] || {}).status)).length;
       const withUrl = works.filter((w) => w.url).length;
       const reg = window.Register ? window.Register.progress() : { done: 0, total: 0 };
-      const pc = st.planChecks || {};
-      const confirmed = works.filter((w) => { const m = pc[w.cp + '|' + w.title] || {}; return m.perm && m.cast; }).length;
-      const manual = st.flowDone || {};
+      const seen = st.flowSeen || {};   // 읽기만 하면 되는 단계는 화면을 열어 보면 끝난 것으로 본다
+      const tagged = keys.filter((k) => (st.creatives[k] || {}).tag).length;
       const today = Calc.today();
       const started = today >= P.start;
       const yest = Calc.addDays(today, -1);
@@ -139,15 +138,15 @@
         { route: 'works', t: '작품 고르기', group: '준비', done: works.length >= 3 && withUrl === works.length,
           hint: works.length + '편 고름 · 주소 ' + withUrl + '/' + works.length, cta: '작품 고르기',
           goal: '광고할 작품 3~5편을 고르고, 작품마다 랜딩 주소를 넣습니다.' },
-        { route: 'playbook', t: '작품별 계획', group: '준비', done: works.length > 0 && confirmed === works.length,
-          hint: 'CP 확인 ' + confirmed + '/' + works.length + '편', cta: '계획 보기',
-          goal: '작품마다 추천 광고 방법을 읽고, CP에 홍보 허락 범위와 출연진을 확인해 체크합니다.' },
+        { route: 'playbook', t: '작품별 계획', group: '준비', done: works.length > 0 && !!seen.playbook,
+          hint: works.length ? (seen.playbook ? works.length + '편 확인함' : works.length + '편 읽기') : '작품을 먼저 고르기', cta: '계획 보기',
+          goal: '작품마다 추천 광고 방법을 읽습니다. 따로 입력할 것은 없습니다.' },
         { route: 'creatives', t: '소재 준비', group: '준비', done: keys.length > 0 && ready === keys.length,
           hint: '검수 ' + ready + '/' + keys.length + '종', cta: '소재 보기',
-          goal: '소재마다 내용과 상태를 정하고 검수를 끝냅니다.' },
-        { route: 'links', t: '링크 태그', group: '준비', manual: true, done: !!(st.checks.p06 && st.checks.p08) || !!manual.links,
-          hint: '꼬리표 규칙 확정', cta: '링크 만들기',
-          goal: '링크 꼬리표 규칙을 확정하고, 광고에 넣을 링크를 복사합니다.' },
+          goal: '소재를 받는 대로 상태를 바꾸고 검수합니다. 내용은 추천대로 채워져 있습니다 (' + tagged + '/' + keys.length + ').' },
+        { route: 'links', t: '링크 태그', group: '준비', done: works.length > 0 && withUrl === works.length && !!seen.links,
+          hint: withUrl === works.length && works.length ? '링크 준비됨' : '랜딩 주소 ' + withUrl + '/' + works.length, cta: '링크 보기',
+          goal: '랜딩 주소를 넣으면 링크가 자동으로 만들어집니다. 여기서는 복사만 합니다.' },
         { route: 'register', t: '광고 등록', group: '준비', done: reg.total > 0 && reg.done === reg.total,
           hint: '등록 ' + reg.done + '/' + reg.total + '건', cta: '광고 등록하기',
           goal: '문구와 키워드를 채우고 등록 파일을 매체에 올립니다. 광고는 꺼진 상태로 올리고 12/1에 켭니다.' },

@@ -10,7 +10,7 @@
       works: [],           // [{code, title, cp, url}]
       creatives: {},       // 'w01_v15a' → {status, qc: [bool], note}
       extraCreatives: {},  // 'w01' → ['v15c', ...] (주간 교체로 추가한 소재)
-      planChecks: {},      // 'CP|작품명' → {항목 id: true} (작품별 계획의 체크)
+      flowSeen: {},        // 읽기만 하는 단계를 열어 봤는지 {playbook: true, links: true}
       reports: [],         // [{id, date, media, work, creative, imp, clk, start, ep3, pay, cost}]
       settings: { ytMedium: 'paid_social', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)
     };

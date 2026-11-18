@@ -14,32 +14,22 @@
 </head>
 <body>
   <a class="skip" href="#view">본문으로 건너뛰기</a>
-  <header class="topbar">
-    <button id="menuBtn" class="icon-btn" aria-label="메뉴 열기" aria-expanded="false" aria-controls="side">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
-    <a class="brand" href="#/"><span class="brand-mark">원</span><strong>원드라마 광고</strong></a>
-    <span id="topTitle" class="top-title"></span>
-  </header>
-  <div class="app">
-    <aside id="side" class="side">
+  <div class="top">
+    <header class="hbar">
       <a class="brand" href="#/">
         <span class="brand-mark">원</span>
-        <span>
-          <strong>원드라마</strong>
-          <small>12월 광고 집행</small>
-        </span>
+        <span><strong>원드라마</strong> <small>12월 광고 집행</small></span>
       </a>
       <div id="phaseChip" class="phase-chip"></div>
-      <nav id="nav" class="nav" aria-label="주 메뉴"></nav>
-      <div class="side-foot">
-        <div id="saveState" class="save-state" aria-live="polite">이 브라우저에 저장됨</div>
+      <nav id="util" class="util" aria-label="참고 메뉴"></nav>
+      <div class="hbar-foot">
+        <span id="saveState" class="save-state" aria-live="polite">이 브라우저에 저장됨</span>
         <button id="themeBtn" class="link-btn" type="button">화면 모드: 자동</button>
       </div>
-    </aside>
-    <div id="scrim" class="scrim" hidden></div>
-    <main id="view" class="main" tabindex="-1"></main>
+    </header>
+    <nav id="nav" class="hsteps" aria-label="진행 단계"></nav>
   </div>
+  <main id="view" class="main" tabindex="-1"></main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/plan.js"></script>

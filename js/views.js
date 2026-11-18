@@ -119,13 +119,10 @@
     // 준비 단계 안내: 끝나지 않은 첫 단계를 「지금 할 일」로 보여 준다.
     const steps = Calc.flow();
     const curStep = steps.current;
-    const stepLi = (x) => '<li class="' + (x.done ? 'done' : x === curStep ? 'cur' : '') + '"' + (x === curStep ? ' aria-current="step"' : '') + '><a href="' + x.href + '">' + h(x.t) + '</a><br><span class="small muted">' + h(x.hint) + '</span></li>';
-    const setupHtml = '<div class="card"><h2>지금 할 일 <span class="muted small">준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 완료</span></h2>' +
-      '<h3 style="margin-top:0">준비 · 11/30까지 · 순서대로 한 번씩</h3><ol class="steps">' + steps.filter((x) => x.group === '준비').map(stepLi).join('') + '</ol>' +
-      '<h3>집행 · 12/1~31 · 되풀이</h3><ol class="steps run">' + steps.filter((x) => x.group === '집행').map(stepLi).join('') + '</ol>' +
+    const setupHtml = '<div class="card nextcard">' +
       (curStep
-        ? '<div class="next"><div class="what"><strong>' + curStep.n + '단계. ' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.goal) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div>'
-        : '<div class="next"><div class="what"><strong>준비가 끝났습니다</strong><span class="muted">12/1에 매체에서 광고를 켜고, 12/2부터 전날 성과를 입력합니다.</span></div></div>') + '</div>';
+        ? '<div class="next"><div class="what"><span class="small muted">지금 할 일 · 준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 끝남</span><strong>' + curStep.n + '단계. ' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.goal) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div>'
+        : '<div class="next"><div class="what"><span class="small muted">준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 끝남</span><strong>준비가 끝났습니다</strong><span class="muted">12/1에 매체에서 광고를 켜고, 12/2부터 전날 성과를 입력합니다.</span></div></div>') + '</div>';
     const showStats = S().reports.length > 0 || today >= P.start;   // 집행 전에는 0뿐인 숫자를 감춘다
 
     const timeline = Array.from({ length: 31 }, (_, i) => {
@@ -157,14 +154,10 @@
         '<h3>측정·확인</h3><div class="actions">' + P.tools.map((t) => ext(Calc.toolUrl(t), t.name)).join('') + '</div></div>' +
       '<div class="card"><h2>12월 일정</h2><div class="timeline">' + timeline + '</div>' +
         '<div class="small muted">' + P.phases.map((ph) => h(ph.name) + ' ' + md(ph.start) + '~' + md(ph.end) + ' (' + pct(ph.share, 0) + ')').join(' · ') + '</div></div>' +
-      '<div class="grid g2">' +
+      '<div>' +
         '<div class="card"><h2>' + (showPhase ? h(showPhase.name) + ' 기간 하루 예산' : '하루 예산') + '</h2>' +
           (showPhase ? '<table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="num">' + won(Calc.daily(m.id, showPhase.id)) + '</td><td class="num">' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</td></tr>').join('') +
             '<tr class="total"><td>합계</td><td class="num">' + won(P.media.reduce((s, m) => s + Calc.daily(m.id, showPhase.id), 0)) + '</td><td></td></tr></tbody></table>' : '<div class="empty">집행이 끝났습니다</div>') +
-        '</div>' +
-        '<div class="card"><h2>체크리스트</h2>' +
-          prog.map((p) => '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><span>' + h(p.sec.name) + ' <span class="muted small">' + h(p.sec.period) + '</span></span><span class="num">' + p.done + '/' + p.total + '</span></div>' + bar(p.total ? p.done / p.total : 0, 'ok') + '</div>').join('') +
-          (todo.length ? '<h3>다음 할 일</h3>' + todo.map((t) => '<label class="check"><input type="checkbox" data-chg="toggleCheck" data-id="' + h(t.i.id) + '"><span class="t">' + h(t.i.text) + (t.i.owner ? ' <span class="tag">' + h(t.i.owner) + '</span>' : '') + '</span></label>').join('') : '<div class="notice ok">모든 항목을 마쳤습니다</div>') +
         '</div>' +
       '</div>' +
       (showStats ? Views.mediaTable('매체별 성과', Calc.groupBy(S().reports, (r) => r.media)) : '');
@@ -325,7 +318,7 @@
 
     return head('작품', '광고 후보 ' + cands.length + '편 (상용 등록, 청불 제외) 중 3~5편을 고른다. CP 홍보 허락 범위는 따로 확인한다.') +
       '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml +
-        (picked.length ? '<p style="margin:12px 0 0"><a class="btn primary" href="#/playbook">작품별 광고 방법과 체크리스트 보기 →</a></p>' : '') + '</div>' +
+        (picked.length < 5 ? '<p style="margin:12px 0 0"><button class="primary" data-act="autoPick">' + (picked.length < 3 ? '추천 조합으로 채우기' : '추천작 1편 더 고르기') + '</button> <span class="small muted">CP 추천, 팬덤, 신작, 예고편, 무료 3화 이상을 기준으로 자동으로 고릅니다. 마음에 안 들면 빼면 됩니다.</span></p>' : '') + '</div>' +
       castHtml +
       '<div class="card"><h2>CP 추천 작품 <span class="muted small">스튜디오지니 회신 11/17</span></h2><div class="tablewrap"><table><thead><tr><th>작품</th><th>CP</th><th>반응 좋았던 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
         '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>' +
@@ -355,7 +348,9 @@
     const used = new Set(s.works.map((w) => w.code));
     let i = 1;
     while (used.has('w' + String(i).padStart(2, '0'))) i++;
-    s.works.push({ code: 'w' + String(i).padStart(2, '0'), title: el.dataset.title, cp: el.dataset.cp, url: '' });
+    const w = { code: 'w' + String(i).padStart(2, '0'), title: el.dataset.title, cp: el.dataset.cp, url: '' };
+    s.works.push(w);
+    window.Playbook.fillTags(s, w);   // 소재 내용을 추천대로 미리 채운다
     s.works.sort((a, b) => (a.code < b.code ? -1 : 1));
   });
   Actions.unpickWork = (el) => {
