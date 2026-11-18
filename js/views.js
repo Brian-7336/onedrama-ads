@@ -268,8 +268,8 @@
   const castLinks = (c) => (c.links || []).filter((l) => /^https?:\/\//.test(l[1]))
     .map((l) => '<a class="chip' + (FAN_LABELS.includes(l[0]) ? ' fan' : '') + '" href="' + h(l[1]) + '" target="_blank" rel="noopener noreferrer" title="' + h(l[1]) + '">' + h(l[0]) + '</a>').join(' ');
   // 작품 하나의 배우·채널 표 (후보 목록에서 펼쳐 보는 용도)
-  const castDetail = (title) => '<table class="inner"><thead><tr><th>배우</th><th>구분</th><th>그룹</th><th>팬클럽</th><th>소속사</th><th>공식 채널 · 팬카페 · 공식 사이트</th><th>확신도</th></tr></thead><tbody>' +
-    castOf(title).map((c) => '<tr><td>' + h(c.name) + '</td><td>' + h(c.role || '') + '</td><td class="wrap">' + h(c.group || '') + '</td><td class="wrap">' + h(c.fanclub || '') + '</td><td class="wrap">' + h(c.agency || '') + '</td><td class="wrap">' + (castLinks(c) || '<span class="muted small">확인 못 함</span>') + '</td><td>' + h(CONF_KO[c.confidence] || '') + '</td></tr>').join('') + '</tbody></table>';
+  const castDetail = (title) => '<table class="inner"><thead><tr><th>배우</th><th>배역</th><th>구분</th><th>그룹</th><th>팬클럽</th><th>공식 채널 · 팬카페 · 공식 사이트</th><th>출처</th></tr></thead><tbody>' +
+    castOf(title).map((c) => '<tr><td>' + h(c.name) + '</td><td>' + h(c.character || '') + '</td><td>' + h(c.role || '') + '</td><td class="wrap">' + h(c.group || '') + '</td><td class="wrap">' + h(c.fanclub || '') + '</td><td class="wrap">' + (castLinks(c) || '<span class="muted small">없음</span>') + '</td><td>' + (c.source === 'CP 메타' ? '<span class="tag ok">CP 메타</span>' : '<span class="tag warn">웹 조사</span>') + '</td></tr>').join('') + '</tbody></table>';
   const CONF_KO = { high: '높음', medium: '보통', low: '낮음' };
   // 출시일 (최초 공개일. 세로본능 작품은 원작 개봉·방영일)
   const RELEASE = window.RELEASE || {};
@@ -311,10 +311,10 @@
       }).join('') + '</tbody></table></div>' : '<div class="empty">아직 고른 작품이 없습니다. 아래 목록에서 3~5편을 골라 주세요.</div>';
 
     // 고른 작품의 출연 배우와 팬 채널
-    const castRows = picked.flatMap((w) => castOf(w.title).map((c) => '<tr><td><code>' + h(w.code) + '</code> ' + h(w.title) + '</td><td>' + h(c.name) + '</td><td>' + h(c.role || '') + '</td><td class="wrap">' + h(c.group || '') + '</td><td class="wrap">' + h(c.fanclub || '') + '</td><td class="wrap">' + (castLinks(c) || '<span class="muted small">확인 못 함</span>') + '</td><td>' + h(CONF_KO[c.confidence] || '') + '</td></tr>'));
+    const castRows = picked.flatMap((w) => castOf(w.title).map((c) => '<tr><td><code>' + h(w.code) + '</code> ' + h(w.title) + '</td><td>' + h(c.name) + '</td><td>' + h(c.role || '') + '</td><td class="wrap">' + h(c.group || '') + '</td><td class="wrap">' + h(c.fanclub || '') + '</td><td class="wrap">' + (castLinks(c) || '<span class="muted small">없음</span>') + '</td><td>' + (c.source === 'CP 메타' ? '<span class="tag ok">CP 메타</span>' : '<span class="tag warn">웹 조사</span>') + '</td></tr>'));
     const castHtml = picked.length ? '<div class="card"><h2>고른 작품의 출연 배우·팬 채널</h2>' +
-      (castRows.length ? '<div class="tablewrap"><table><thead><tr><th>작품</th><th>배우</th><th>구분</th><th>그룹</th><th>팬클럽</th><th>공식 채널 · 팬카페 · 공식 사이트</th><th>확신도</th></tr></thead><tbody>' + castRows.join('') + '</tbody></table></div>' : '<div class="empty">고른 작품의 출연 배우를 아직 확인하지 못했습니다.</div>') +
-      '<p class="small muted" style="margin-top:8px">웹에서 조사한 자료다. 계정이 본인 것인지 직접 확인한 뒤 쓴다. 빈칸은 「없음」이 아니라 「확인 못 함」이다. 전체 목록은 원드라마_출연배우_팬채널.xlsx 에 있다.</p></div>' : '';
+      (castRows.length ? '<div class="tablewrap"><table><thead><tr><th>작품</th><th>배우</th><th>구분</th><th>그룹</th><th>팬클럽</th><th>공식 채널 · 팬카페 · 공식 사이트</th><th>출처</th></tr></thead><tbody>' + castRows.join('') + '</tbody></table></div>' : '<div class="empty">고른 작품의 출연 배우를 아직 확인하지 못했습니다.</div>') +
+      '<p class="small muted" style="margin-top:8px">「CP 메타」는 CP가 납품한 메타 파일의 출연진과 계정이다. 「웹 조사」는 웹에서 찾은 것이라 쓰기 전에 확인한다. 그룹·팬클럽·팬카페는 모두 웹 조사로 덧붙인 값이다. 전체 목록은 원드라마_출연배우_팬채널.xlsx 에 있다.</p></div>' : '';
 
     return head('작품', '광고 후보 ' + cands.length + '편 (상용 등록, 청불 제외) 중 3~5편을 고른다. CP 홍보 허락 범위는 따로 확인한다.') +
       '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml +

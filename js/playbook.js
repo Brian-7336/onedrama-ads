@@ -110,9 +110,23 @@
     return r;
   }
 
+  // CP 납품 메타의 초상권 문구를 묶어서 보여 준다 (같은 문구끼리 배우 이름을 모은다).
+  function portraitLines(w) {
+    const pr = ((window.PRIVATE || {})[w.title] || {}).portrait || [];
+    const by = {};
+    pr.forEach((x) => { (by[x[1]] = by[x[1]] || []).push(x[0]); });
+    return Object.keys(by).map((k) => ({ text: k, names: by[k], warn: /협의|불가|금지|필요/.test(k) }));
+  }
+
   // 집행 전에 사람이 확인해야 하는 것. 체크 칸 없이 안내만 한다.
   function cautions(w, p) {
     const c = [];
+    const meta = p.cast.length > 0 && p.cast.every((x) => x.source === 'CP 메타');
+    if (meta) {
+      c.push('출연진은 CP 납품 메타 기준이다.' + (portraitLines(w).length ? ' 초상권은 위 표의 문구를 따른다.' : ' 메타에 초상권 문구가 없어 CP에 사용 범위를 확인한다.'));
+      if (p.lowFree) c.push('무료 회차가 ' + p.d.free + '화뿐이라 3화 시청이 곧 결제다. 결제당 비용으로 판단한다.');
+      return c;
+    }
     c.push(p.cast.length ? 'CP에 홍보 허락 범위를 확인한다 (무료 회차, 배우 이름·얼굴 사용).' : 'CP에 홍보 허락 범위(무료 회차 사용)를 확인한다.');
     c.push(p.cast.length ? '출연진은 웹 조사 자료다. 광고 문구에 이름을 쓰기 전에 CP에 맞는지 확인한다.' : '출연진을 확인하지 못했다. CP에 출연진과 배우 계정을 요청하면 팬덤 활용을 다시 판단할 수 있다.');
     if (p.lowFree) c.push('무료 회차가 ' + p.d.free + '화뿐이라 3화 시청이 곧 결제다. 결제당 비용으로 판단한다.');
@@ -176,6 +190,9 @@
               P.creativeTypes.map((c) => '<span class="tag">' + h(c.name) + ' → ' + h(plan[c.id] || '–') + '</span>').join(' ') + '</p>' +
             '<h3>검색광고 키워드 <button class="link-btn" data-act="pbCopyKw" data-code="' + h(w.code) + '">복사</button></h3><p class="small" style="line-height:1.9;margin:0">' + kws.map((k) => '<span class="tag">' + h(k) + '</span>').join(' ') + '</p>' +
             (p.fans.length ? '<h3>공유를 부탁할 계정</h3><table class="inner"><tbody>' + p.fans.map((c) => '<tr><td>' + h(c.name) + '</td><td class="wrap">' + h(c.group || '') + (c.fanclub ? '<br><span class="small muted">팬클럽 ' + h(c.fanclub) + '</span>' : '') + '</td><td class="wrap">' + (chips(c) || '<span class="muted small">확인 못 함</span>') + '</td></tr>').join('') + '</tbody></table>' : '') +
+            (() => { const pl = portraitLines(w); const pv = (window.PRIVATE || {})[w.title] || {};
+              return (pl.length ? '<h3>초상권 (CP 메타)</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + pl.map((x) => '<li>' + (x.warn ? '<span class="tag warn">확인 필요</span> ' : '<span class="tag ok">사용 가능 문구</span> ') + h(x.text) + ' <span class="muted">(' + h(x.names.join(', ')) + ')</span></li>').join('') + '</ul>' : '') +
+                (pv.marketing ? '<h3>CP가 적은 마케팅 포인트</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.marketing) + '</p>' : ''); })() +
             '<h3>집행 전에 확인</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + cautions(w, p).map((c) => '<li>' + h(c) + '</li>').join('') + '</ul>' +
           '</div>' +
         '</div></div>';
