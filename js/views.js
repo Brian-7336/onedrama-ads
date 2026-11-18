@@ -67,7 +67,7 @@
 
   // 화면에만 쓰는 상태 (저장하지 않음)
   const ui = {
-    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false },
+    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false, fan: false },
     report: { tab: 'media', from: '', to: '', media: '' },
     form: { date: '', media: 'meta', work: '', creative: '', imp: '', clk: '', start: '', ep3: '', pay: '', cost: '' },
     links: { media: '' },
@@ -260,6 +260,15 @@
   Actions.resetDaily = () => Store.update((s) => { s.settings.daily = {}; });
 
   // ---------- 4. 작품 ----------
+  // 출연 배우·팬 채널 (js/cast-data.js, 웹 조사 결과). 없으면 빈 값.
+  const CAST = window.CAST || {};
+  const castOf = (title) => (CAST[title] || {}).cast || [];
+  const hasFandom = (title) => castOf(title).some((c) => c.group || c.fanclub || c.fancafe);
+  const castNames = (title) => castOf(title).map((c) => h(c.name) + (c.group ? ' <span class="tag accent" title="' + h(c.group) + '">' + h(c.group.split(/[,(]/)[0].replace(/^\(전\)\s*/, '').trim()) + '</span>' : '')).join(', ');
+  const castLinks = (c) => [['instagram', '인스타'], ['x', 'X'], ['youtube', '유튜브'], ['tiktok', '틱톡'], ['fancafe', '팬카페']]
+    .filter((k) => /^https?:\/\//.test(c[k[0]] || '')).map((k) => '<a href="' + h(c[k[0]].split(/\s/)[0]) + '" target="_blank" rel="noopener noreferrer">' + k[1] + '</a>').join(' · ');
+  const CONF_KO = { high: '높음', medium: '보통', low: '낮음' };
+
   Views.works = function () {
     const f = ui.works;
     const picked = S().works;
@@ -269,7 +278,7 @@
     const cps = [...new Set(cands.map((w) => w.cp))];
     const genres = [...new Set(cands.map((w) => w.genre))];
     const q = f.q.trim().toLowerCase();
-    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
+    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q) || castOf(w.title).some((c) => (c.name + ' ' + (c.group || '')).toLowerCase().includes(q))) && (!f.fan || hasFandom(w.title)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
     const full = picked.length >= 5;
     const recRows = Object.keys(P.recommended).map((title) => {
       const w = WORKS_DATA.find((x) => x.title === title) || {};
@@ -287,23 +296,31 @@
           '<td><button class="ghost sm" data-act="unpickWork" data-code="' + h(w.code) + '">빼기</button></td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="empty">아직 고른 작품이 없습니다. 아래 목록에서 3~5편을 골라 주세요.</div>';
 
+    // 고른 작품의 출연 배우와 팬 채널
+    const castRows = picked.flatMap((w) => castOf(w.title).map((c) => '<tr><td><code>' + h(w.code) + '</code> ' + h(w.title) + '</td><td>' + h(c.name) + '</td><td>' + h(c.role || '') + '</td><td class="wrap">' + h(c.group || '') + '</td><td class="wrap">' + h(c.fanclub || '') + '</td><td>' + (castLinks(c) || '<span class="muted small">확인 못 함</span>') + '</td><td>' + h(CONF_KO[c.confidence] || '') + '</td></tr>'));
+    const castHtml = picked.length ? '<div class="card"><h2>고른 작품의 출연 배우·팬 채널</h2>' +
+      (castRows.length ? '<div class="tablewrap"><table><thead><tr><th>작품</th><th>배우</th><th>구분</th><th>그룹</th><th>팬클럽</th><th>공식 채널</th><th>확신도</th></tr></thead><tbody>' + castRows.join('') + '</tbody></table></div>' : '<div class="empty">고른 작품의 출연 배우를 아직 확인하지 못했습니다.</div>') +
+      '<p class="small muted" style="margin-top:8px">웹에서 조사한 자료다. 계정이 본인 것인지 직접 확인한 뒤 쓴다. 빈칸은 「없음」이 아니라 「확인 못 함」이다. 전체 목록은 원드라마_출연배우_팬채널.xlsx 에 있다.</p></div>' : '';
+
     return head('작품', '광고 후보 ' + cands.length + '편 (상용 등록, 청불 제외) 중 3~5편을 고른다. CP 홍보 허락 범위는 따로 확인한다.') +
       '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml + '</div>' +
+      castHtml +
       '<div class="card"><h2>CP 추천 작품 <span class="muted small">스튜디오지니 회신 11/17</span></h2><div class="tablewrap"><table><thead><tr><th>작품</th><th>CP</th><th>반응 좋았던 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
         '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>' +
       '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편</span></h2>' +
-        '<div class="filters"><input type="search" id="worksQ" placeholder="작품명 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명 검색">' +
+        '<div class="filters"><input type="search" id="worksQ" placeholder="작품명·배우 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명·배우 검색">' +
           '<select data-chg="filterWorks" data-key="cp" aria-label="CP">' + opt('', 'CP 전체', f.cp) + cps.map((c) => opt(c, c, f.cp)).join('') + '</select>' +
           '<select data-chg="filterWorks" data-key="genre" aria-label="장르">' + opt('', '장르 전체', f.genre) + genres.map((c) => opt(c, c, f.genre)).join('') + '</select>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="trailer"' + (f.trailer ? ' checked' : '') + '> 예고편 있음</label>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="free3"' + (f.free3 ? ' checked' : '') + '> 무료 3화 이상</label>' +
-          '<label><input type="checkbox" data-chg="filterWorks" data-key="rec"' + (f.rec ? ' checked' : '') + '> CP 추천</label></div>' +
-        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th></th></tr></thead><tbody>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="rec"' + (f.rec ? ' checked' : '') + '> CP 추천</label>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="fan"' + (f.fan ? ' checked' : '') + '> 팬덤 있는 출연자</label></div>' +
+        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th>출연</th><th></th></tr></thead><tbody>' +
           (list.length ? list.map((w) => {
             const on = pickedTitles.has(w.cp + '|' + w.title);
-            return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td>' +
+            return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td><td class="wrap" style="min-width:200px">' + (castNames(w.title) || '<span class="muted small">–</span>') + '</td>' +
               '<td class="num">' + (on ? '<span class="tag accent">고름</span>' : '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(w.title) + '"' + (full ? ' disabled title="5편까지 고를 수 있습니다"' : '') + '>고르기</button>') + '</td></tr>';
-          }).join('') : '<tr><td colspan="8" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
+          }).join('') : '<tr><td colspan="9" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
         '</tbody></table></div></div>';
   };
   Actions.filterWorks = (el) => { ui.works[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value; };
