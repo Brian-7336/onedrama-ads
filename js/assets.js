@@ -94,12 +94,13 @@
   function cell(key) {
     const f = (Store.state.creatives[key] || {}).file;
     const input = '<input type="file" accept="video/*,image/*" data-chg="uploadAsset" data-key="' + h(key) + '" hidden>';
-    if (!f) return '<label class="btn sm upload">파일 올리기 · 끌어다 놓기' + input + '</label>';
+    const mk = '<button class="' + (f ? 'link-btn' : 'sm') + '" data-act="makerOpen" data-key="' + h(key) + '" title="원본 영상을 원드라마 형식으로 잘라 넣습니다">' + (f ? '수정' : '만들기') + '</button>';
+    if (!f) return '<label class="btn sm upload">파일 올리기 · 끌어다 놓기' + input + '</label> ' + mk;
     const info = f.w + '×' + f.h + (f.dur != null ? ' · ' + f.dur + '초' : '') + ' · ' + mb(f.size);
-    return '<div class="asset"><button class="link-btn asset-name" data-act="previewAsset" data-key="' + h(key) + '" title="' + h(f.name) + ' 미리 보기">' + h(f.name) + '</button>' +
+    return '<div class="asset"><button class="link-btn asset-name" data-act="previewAsset" data-key="' + h(key) + '" title="' + h(f.name) + ' 재생·미리 보기">▶ ' + h(f.name) + '</button>' + (f.made ? '<span class="tag accent" title="이 사이트에서 원드라마 형식으로 만든 파일">자동 제작</span>' : '') +
       '<span class="small muted">' + info + '</span>' +
       (f.problems && f.problems.length ? '<span class="tag bad" title="' + h(f.problems.join(' / ')) + '">규격 확인: ' + h(f.problems[0]) + '</span>' : '<span class="tag ok">규격 맞음</span>') +
-      '<span class="asset-act"><button class="link-btn" data-act="downloadAsset" data-key="' + h(key) + '">내려받기</button> <label class="link-btn">바꾸기' + input + '</label> <button class="link-btn" data-act="delAsset" data-key="' + h(key) + '">지우기</button></span></div>';
+      '<span class="asset-act">' + mk + ' <button class="link-btn" data-act="downloadAsset" data-key="' + h(key) + '">내려받기</button> <label class="link-btn">바꾸기' + input + '</label> <button class="link-btn" data-act="delAsset" data-key="' + h(key) + '">지우기</button></span></div>';
   }
   function summary() {
     const fs = Object.values(Store.state.creatives).map((c) => c.file).filter(Boolean);
@@ -173,6 +174,11 @@
           return t && check(x, t.spec, meta).length === 0;
         });
       }
+      if (!id && file.type.startsWith('video/') && !(Store.state.sources || {})[code]) {
+        // 맞는 칸이 없는 영상은 「원본 영상」으로 넣어 두고, 거기서 잘라 만든다.
+        try { await window.Maker.setSource(code, file); placed.push(file.name + ' → 원본 영상'); } catch (e) { left.push(file.name + ' (읽을 수 없음)'); }
+        continue;
+      }
       if (!id || taken.has(code + '_' + id)) { left.push(file.name + ' (맞는 칸 없음)'); continue; }
       taken.add(code + '_' + id);
       try { await put(code + '_' + id, file); placed.push(file.name + ' → ' + id); } catch (e) { left.push(file.name + ' (읽을 수 없음)'); }
@@ -218,5 +224,5 @@
   // 작품 코드가 바뀌면 보관한 파일의 이름표도 새 코드로 옮긴다.
   async function rename(oldKey, newKey) { const f = await dbGet(oldKey); if (f) { await dbPut(newKey, f); await dbDel(oldKey); } }
 
-  window.Assets = { cell, put, get: dbGet, rename, check, expected, summary, assign };
+  window.Assets = { cell, put, get: dbGet, raw: { put: dbPut, get: dbGet, del: dbDel }, probe, rename, check, expected, summary, assign };
 })();

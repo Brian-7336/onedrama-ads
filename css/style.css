@@ -444,3 +444,29 @@ button.fold { all: unset; cursor: pointer; display: flex; align-items: baseline;
 button.fold:hover { color: var(--accent); }
 button.fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 .fold-mark { color: var(--muted); width: 1em; }
+
+/* 영상 만들기 */
+.srcrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel-2); font-size: 13px; }
+dialog.maker, dialog.maker-run { border: 0; border-radius: var(--radius); padding: 16px; background: var(--panel); color: var(--ink); box-shadow: var(--shadow-up); }
+dialog.maker::backdrop, dialog.maker-run::backdrop { background: rgba(0, 0, 0, .6); }
+dialog.maker { width: min(96vw, 980px); max-height: 94vh; }
+dialog.maker-run { width: min(92vw, 520px); }
+dialog.maker h3, dialog.maker-run h3 { margin: 0 0 8px; font-size: 16px; }
+.maker-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.maker-head h3 { margin: 0; }
+.maker-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 16px; align-items: start; }
+.maker .stage { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+.maker .stage canvas { max-width: 100%; max-height: 68vh; border-radius: var(--radius-sm); background: #000; }
+.maker .transport { display: flex; align-items: center; gap: 8px; width: 100%; }
+.maker .transport input[type=range] { flex: 1; min-width: 0; }
+.maker .fields { display: flex; flex-direction: column; gap: 8px; max-height: 80vh; overflow: auto; padding-right: 4px; }
+.maker .fields p { margin: 0; overflow-wrap: anywhere; }
+.mf { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.mf input[type=text], .mf input[type=number], .mf select { width: 100%; }
+.mf output { color: var(--ink); font-weight: 600; }
+.maker-go { align-items: center; gap: 10px; margin-top: 6px; }
+.runlist { margin: 10px 0 14px; padding-left: 20px; line-height: 1.9; font-size: 13px; }
+.ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .bad-t { color: var(--bad); }
+@media (max-width: 760px) { .maker-body { grid-template-columns: 1fr; } .maker .stage canvas { max-height: 46vh; } }
+
+dialog.maker .row, dialog.maker-run .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

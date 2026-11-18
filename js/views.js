@@ -379,12 +379,13 @@
 
     const as = window.Assets.summary();
     return head('소재', '작품 ' + works.length + '편 · 소재 ' + all.length + '종 · 담당 마스. 매주 효율이 낮은 2종을 빼고 새 2종을 넣는다.') +
-      '<div class="notice info">소재가 오면 작품 칸으로 끌어다 놓으세요. 길이·비율·크기를 자동으로 검사하고 상태를 「검수 중」으로 바꿉니다. 올린 파일 ' + as.n + '개 · ' + as.text + (as.bad ? ' · <strong>규격 확인 ' + as.bad + '개</strong>' : '') + '. 파일은 이 브라우저에만 보관되고, 매체에는 아직 자동으로 올라가지 않습니다.</div>' +
+      '<div class="notice info">소재가 오면 작품 칸으로 끌어다 놓으세요. 길이·비율·크기를 자동으로 검사하고 상태를 「검수 중」으로 바꿉니다. 올린 파일 ' + as.n + '개 · ' + as.text + (as.bad ? ' · <strong>규격 확인 ' + as.bad + '개</strong>' : '') + '. 소재가 없으면 원본 영상(1화·예고편)을 넣고 「빈 칸 자동으로 만들기」를 누르세요. 원드라마 홍보영상 형식(위쪽 제목·로고, 끝 화면 문구)으로 잘라 넣습니다. 넣은 파일은 ▶로 재생하고 「수정」으로 고칩니다. 파일은 이 브라우저에만 보관됩니다.</div>' +
       '<div class="grid" style="grid-template-columns:repeat(' + counts.length + ',minmax(0,1fr))">' + counts.map((c) => '<div class="card stat"><div class="label">' + h(c[0]) + '</div><div class="value">' + c[1] + '</div></div>').join('') + '</div>' +
       works.map((w) => {
         const ids = Calc.creativeIds(w.code);
         return '<div class="card" data-dropwork="' + h(w.code) + '"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2>' +
-          '<p class="dropzone">이 작품의 소재 파일을 여기로 한꺼번에 끌어다 놓으세요. 파일 이름에 소재 번호(예: v15a)가 있으면 그 칸에, 없으면 길이·비율이 맞는 빈 칸에 넣습니다. 특정 칸에 넣으려면 그 줄 위에 놓습니다.</p>' +
+          '<p class="dropzone">이 작품의 소재 파일을 여기로 한꺼번에 끌어다 놓으세요. 파일 이름에 소재 번호(예: v15a)가 있으면 그 칸에, 없으면 길이·비율이 맞는 빈 칸에 넣습니다. 맞는 칸이 없는 영상(1화, 예고편)은 원본 영상으로 넣어 두고 거기서 잘라 만듭니다. 특정 칸에 넣으려면 그 줄 위에 놓습니다.</p>' +
+          window.Maker.sourceRow(w.code) +
           '<div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>파일</th><th>내용</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
           ids.map((id) => {
             const t = P.creativeTypes.find((c) => c.id === id);
