@@ -202,7 +202,7 @@
         const used = new Set(s.works.map((w) => w.code));
         let i = 1;
         while (used.has('w' + String(i).padStart(2, '0'))) i++;
-        const w = { code: 'w' + String(i).padStart(2, '0'), title: x.w.title, cp: x.w.cp, url: '' };
+        const w = { code: 'w' + String(i).padStart(2, '0'), title: x.w.title, cp: x.w.cp, url: (window.LANDING || {})[x.w.cp + '|' + x.w.title] || '' };
         s.works.push(w);
         fillTags(s, w);
       });

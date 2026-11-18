@@ -237,6 +237,8 @@
 
   // 이미 골라 둔 작품도 비어 있는 소재 내용을 추천대로 채운다 (정해 둔 것은 건드리지 않는다).
   if (Store.state.works.reduce((n, w) => n + window.Playbook.fillTags(Store.state, w), 0)) Store.save();
+  // 랜딩 주소가 비어 있는 작품은 원드라마 작품 페이지 주소로 채운다.
+  if (Store.state.works.reduce((n, w) => { const u = !w.url && (window.LANDING || {})[w.cp + '|' + w.title]; if (u) { w.url = u; return n + 1; } return n; }, 0)) Store.save();
 
   render(false);
 })();
