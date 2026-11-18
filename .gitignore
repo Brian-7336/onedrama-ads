@@ -5,3 +5,12 @@ HANDOFF.md
 __pycache__/
 # CP 납품 메타의 초상권 계약 정보
 js/private-data.js
+
+# 원본 영상·자막은 올리지 않는다 (용량이 크고 CP 납품 자료)
+*.mov
+*.mp4
+*.mkv
+*.avi
+*.webm
+*.srt
+드라마목록/

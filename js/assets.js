@@ -110,8 +110,8 @@
   Actions.uploadAsset = (el) => {
     const file = el.files && el.files[0];
     if (!file) return false;
-    toast('파일을 읽는 중입니다…');
-    put(el.dataset.key, file).then((problems) => {
+    const b = window.UI.busy('파일을 읽고 규격을 검사하는 중');
+    put(el.dataset.key, file).finally(() => b.done()).then((problems) => {
       toast(problems.length ? '올렸습니다. 규격 확인이 필요합니다: ' + problems[0] : '올렸습니다. 규격이 맞습니다');
       window.App.render(true);
     }).catch((e) => toast('올리지 못했습니다: ' + (e && e.message ? e.message : '알 수 없는 오류')));
@@ -207,11 +207,11 @@
     ev.preventDefault();
     const files = [...ev.dataTransfer.files];
     if (!files.length) return;
-    toast('파일 ' + files.length + '개를 읽는 중입니다…');
+    const b = window.UI.busy('파일 ' + files.length + '개를 읽고 규격을 검사하는 중');
     const job = z.dataset.drop
       ? put(z.dataset.drop, files[0]).then((problems) => ({ placed: [files[0].name], left: files.slice(1).map((f) => f.name + ' (한 칸에 하나만)'), problems }))
       : assign(z.dataset.dropwork, files);
-    job.then((r) => {
+    job.finally(() => b.done()).then((r) => {
       const bad = r.problems && r.problems.length ? ' 규격 확인: ' + r.problems[0] : '';
       toast((r.placed.length ? r.placed.length + '개 올렸습니다.' : '올린 파일이 없습니다.') + bad + (r.left.length ? ' 못 넣은 파일: ' + r.left.join(', ') : ''));
       window.App.render(true);

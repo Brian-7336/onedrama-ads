@@ -15,6 +15,27 @@
   const ext = (url, label, cls) => '<a class="btn ' + (cls || '') + '" href="' + h(url) + '" target="_blank" rel="noopener noreferrer">' + h(label) + ' ↗</a>';
   const opt = (value, label, cur) => '<option value="' + h(value) + '"' + (String(cur) === String(value) ? ' selected' : '') + '>' + h(label) + '</option>';
 
+  // 오래 걸리는 일을 하는 동안 화면 가운데에 돌아가는 원과 설명을 띄운다. 끝나면 done()을 부른다.
+  // 대화창 위에도 보이도록 popover로 띄운다.
+  let busyN = 0;
+  function busy(text) {
+    let el = document.getElementById('busy');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'busy';
+      el.setAttribute('role', 'status');
+      if (el.showPopover) el.setAttribute('popover', 'manual');
+      el.innerHTML = '<span class="spin" aria-hidden="true"></span><span class="bt"></span>';
+      document.body.appendChild(el);
+    }
+    const set = (t) => { el.querySelector('.bt').textContent = t; };
+    set(text);
+    busyN++;
+    el.classList.add('on');
+    try { if (el.showPopover) { if (el.matches(':popover-open')) el.hidePopover(); el.showPopover(); } } catch (e) { /* 무시 */ }
+    let closed = false;
+    return { set, done() { if (closed) return; closed = true; if (--busyN <= 0) { busyN = 0; el.classList.remove('on'); try { if (el.hidePopover && el.matches(':popover-open')) el.hidePopover(); } catch (e) { /* 무시 */ } } } };
+  }
   // undo를 주면 「되돌리기」 버튼이 함께 뜬다.
   function toast(msg, undo) {
     const el = document.getElementById('toast');
@@ -67,7 +88,7 @@
 
   // 화면에만 쓰는 상태 (저장하지 않음)
   const ui = {
-    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false, fan: false, new26: false, sort: '', open: '', recOpen: false },
+    works: { q: '', cp: '', genre: '', trailer: true, free3: false, rec: false, fan: true, new26: true, sort: '', open: '', recOpen: false },
     report: { tab: 'media', from: '', to: '', media: '' },
     form: { date: '', media: 'meta', work: '', creative: '', imp: '', clk: '', start: '', ep3: '', pay: '', cost: '' },
     links: { media: '' },
@@ -681,5 +702,5 @@
   window.Views = Views;
   window.Actions = Actions;
   window.toast = toast;
-  window.UI = { h, n, won, pct, md, bar, dot, head, opt, ext, toast, download, toCsv, copy };
+  window.UI = { h, n, won, pct, md, bar, dot, head, opt, ext, toast, busy, download, toCsv, copy };
 })();

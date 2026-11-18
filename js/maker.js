@@ -106,12 +106,15 @@
   // ---------- 원본 영상 보관 ----------
   async function setSource(code, file) {
     if (!file.type.startsWith('video/')) throw new Error('원본은 영상 파일이어야 합니다');
-    toast('원본 영상을 분석하는 중입니다…');
-    const a = await analyze(file);
-    if (!a.dur) throw new Error('영상 길이를 읽지 못했습니다');
-    await window.Assets.raw.put('src|' + code, file);
-    Store.update((s) => { (s.sources = s.sources || {})[code] = Object.assign({ name: file.name, size: file.size }, a); });
-    return a;
+    const b = window.UI.busy('원본 영상을 분석하는 중 0%');
+    try {
+      const a = await analyze(file, (p) => b.set('원본 영상을 분석하는 중 ' + Math.round(p * 100) + '%'));
+      if (!a.dur) throw new Error('영상 길이를 읽지 못했습니다');
+      b.set('원본 영상을 보관하는 중');
+      await window.Assets.raw.put('src|' + code, file);
+      Store.update((s) => { (s.sources = s.sources || {})[code] = Object.assign({ name: file.name, size: file.size }, a); });
+      return a;
+    } finally { b.done(); }
   }
 
   // ---------- 편집 내용 기본값 ----------
@@ -520,7 +523,7 @@
     box.addEventListener('close', () => { stop(); URL.revokeObjectURL(m.url); });
     show();
   }
-  Actions.makerOpen = (el) => { openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)); return false; };
+  Actions.makerOpen = (el) => { const b = window.UI.busy('편집기를 여는 중'); openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)).then(() => b.done()); return false; };
 
   window.Maker = { sourceRow, setSource, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
 })();
