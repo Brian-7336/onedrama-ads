@@ -355,9 +355,9 @@
     const ids = window.Calc.creativeIds(code);
     const empty = ids.filter((id) => !(Store.state.creatives[code + '_' + id] || {}).file).length;
     const input = '<input type="file" accept="video/*" data-chg="makerSource" data-code="' + h(code) + '" hidden>';
-    return '<div class="srcrow"><strong>원본 영상</strong> ' +
+    return '<div class="srcrow' + (src ? '' : ' need') + '"><strong>원본 영상</strong> ' +
       (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label>'
-        : '<span class="muted">없음. 1화나 예고편 파일을 고르면 원드라마 형식으로 잘라 빈 칸을 채웁니다.</span> <label class="btn sm">원본 영상 고르기' + input + '</label>') +
+        : '<span class="muted">없음. 1화나 예고편 파일을 고르면 원드라마 형식으로 잘라 빈 칸을 채웁니다.</span> <label class="btn primary srcpick">＋ 원본 영상 고르기' + input + '</label>') +
       (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
   }
   Actions.makerSource = (el) => {

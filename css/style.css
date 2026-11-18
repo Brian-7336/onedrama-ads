@@ -470,3 +470,9 @@ dialog.maker h3, dialog.maker-run h3 { margin: 0 0 8px; font-size: 16px; }
 @media (max-width: 760px) { .maker-body { grid-template-columns: 1fr; } .maker .stage canvas { max-height: 46vh; } }
 
 dialog.maker .row, dialog.maker-run .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* 원본 영상이 아직 없을 때: 고르기 버튼을 눈에 띄게 */
+.srcrow.need { border: 1.5px solid var(--accent); background: var(--accent-soft); padding: 14px 16px; }
+.srcrow.need .muted { color: var(--ink); flex: 1 1 260px; }
+label.btn.primary { display: inline-flex; align-items: center; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px; padding: 10px 18px; cursor: pointer; box-shadow: var(--shadow-up); }
+label.btn.primary:hover { filter: brightness(1.08); }
