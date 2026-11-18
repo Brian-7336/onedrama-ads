@@ -438,3 +438,9 @@ tr.dropping > td { background: var(--accent-soft); box-shadow: inset 0 2px 0 var
 /* 출연 칸: 주연·조연 줄 나눔 */
 .castline { display: block; line-height: 1.7; }
 .castline + .castline { margin-top: 2px; color: var(--muted); }
+
+/* 접는 카드 제목 */
+button.fold { all: unset; cursor: pointer; display: flex; align-items: baseline; gap: 8px; width: 100%; font: inherit; color: inherit; }
+button.fold:hover { color: var(--accent); }
+button.fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.fold-mark { color: var(--muted); width: 1em; }
