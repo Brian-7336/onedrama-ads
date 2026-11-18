@@ -263,13 +263,13 @@
   const castOf = (title) => (CAST[title] || {}).cast || [];
   const hasFandom = (title) => castOf(title).some((c) => c.group || c.fanclub || hasFanLink(c));
   const castName = (c) => h(c.name) + (/추정/.test(c.role || '') ? '<span class="muted" title="메타에 주연·조연 구분이 없어 적힌 순서로 추정">*</span>' : '') + (c.group ? ' <span class="tag accent" title="' + h(c.group) + '">' + h(c.group.split(/[,(]/)[0].replace(/^\(전\)\s*/, '').trim()) + '</span>' : '');
-  // 후보 목록의 출연 칸: 주연과 조연을 나눠서 보여 준다.
+  // 후보 목록의 출연 칸: 주연만 보여 준다. 조연은 「채널 보기」를 펼치면 나온다.
   const castNames = (title) => {
     const cs = castOf(title);
     const lead = cs.filter((c) => c.lead === '주연');
-    const rest = cs.filter((c) => c.lead !== '주연');
-    return (lead.length ? '<span class="castline"><span class="tag ok">주연</span> ' + lead.map(castName).join(', ') + '</span>' : '') +
-      (rest.length ? '<span class="castline"><span class="tag">조연</span> ' + rest.map(castName).join(', ') + '</span>' : '');
+    const rest = cs.length - lead.length;
+    if (!cs.length) return '';
+    return (lead.length ? lead.map(castName).join(', ') : '<span class="muted small">주연 정보 없음</span>') + (rest ? ' <span class="muted small" title="조연·특별출연">외 ' + rest + '명</span>' : '');
   };
   const FAN_LABELS = ['다음 팬카페', '네이버 팬카페', '팬카페', '위버스', '프롬', '패니콘', '공식 사이트'];
   const hasFanLink = (c) => (c.links || []).some((l) => FAN_LABELS.includes(l[0]));
@@ -341,7 +341,7 @@
           '<label><input type="checkbox" data-chg="filterWorks" data-key="fan"' + (f.fan ? ' checked' : '') + '> 팬덤 있는 출연자</label>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="new26"' + (f.new26 ? ' checked' : '') + '> 2026년 신작</label>' +
           '<select data-chg="filterWorks" data-key="sort" aria-label="정렬">' + opt('', '목록 순서', f.sort) + opt('new', '출시일 최신순', f.sort) + '</select></div>' +
-        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th>출시일</th><th>출연</th><th></th></tr></thead><tbody>' +
+        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th>출시일</th><th>주연</th><th></th></tr></thead><tbody>' +
           (list.length ? list.map((w) => {
             const on = pickedTitles.has(w.cp + '|' + w.title);
             return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td><td>' + relCell(w.title) + '</td><td class="wrap" style="min-width:200px">' + (castNames(w.title) ? castNames(w.title) + ' <button class="link-btn" data-act="toggleCast" data-title="' + h(w.title) + '" aria-expanded="' + (f.open === w.title) + '">' + (f.open === w.title ? '접기' : '채널 보기') + '</button>' : '<span class="muted small">–</span>') + '</td>' +
