@@ -287,6 +287,7 @@
         ((rd) => (rd.total ? '<span class="tag ' + (rd.ready === rd.total ? 'ok' : 'warn') + '">소재 파일 ' + rd.ready + '/' + rd.total + '</span>' : ''))(window.Bundle.readiness(m)) +
         '<button class="primary sm" data-act="bundleDownload" data-media="' + m.id + '">올리기 묶음 받기 (zip)</button>' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</div>' +
         probs.map((p) => '<div class="notice warn">' + h(p) + '</div>').join('') +
+        (window.Connect ? window.Connect.panel(m) : '') +
         '<div class="tablewrap">' + table + '</div>' + files + '</div>';
     }).join('');
 

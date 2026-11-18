@@ -425,3 +425,12 @@ dialog.preview video, dialog.preview img { display: block; max-width: 100%; max-
 .card.dropping { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .card.dropping .dropzone { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 tr.dropping > td { background: var(--accent-soft); box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+
+/* 매체 연결 (로그인으로 올리기) */
+.connect { margin: 0 0 14px; padding: 14px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius-sm); background: var(--panel-2); }
+.cguide { margin: 0 0 12px; font-size: 13px; }
+.cguide summary { cursor: pointer; font-weight: 600; }
+.cguide ol { margin: 8px 0 10px; padding-left: 20px; line-height: 1.7; }
+.clog { margin-top: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg); font-size: 12px; line-height: 1.6; max-height: 190px; overflow-y: auto; font-variant-numeric: tabular-nums; }
+.clog .ok { color: var(--ok); }
+.clog .bad { color: var(--bad); }
