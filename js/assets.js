@@ -215,5 +215,5 @@
   window.addEventListener('dragover', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
   window.addEventListener('drop', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
 
-  window.Assets = { cell, put, check, expected, summary, assign };
+  window.Assets = { cell, put, get: dbGet, check, expected, summary, assign };
 })();

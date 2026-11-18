@@ -31,7 +31,7 @@
     start: '시작일 (YYYY-MM-DD)', end: '종료일 (YYYY-MM-DD)', startTime: '시작 일시', endTime: '종료 일시',
     ageMin: '나이 최소', ageMax: '나이 최대', placement: '노출 위치',
     headline: '제목', desc: '설명', url: '랜딩 주소 (utm 없음)', fullUrl: '랜딩 주소 (utm 포함)', suffix: 'utm 꼬리표',
-    asset: '영상·이미지 ID', keyword: '키워드', matchType: '검색 유형', bid: '입찰가', groupId: '네이버 광고그룹 ID',
+    asset: '영상·이미지 ID', assetFile: '소재 파일 이름 (묶음 안의 이름)', keyword: '키워드', matchType: '검색 유형', bid: '입찰가', groupId: '네이버 광고그룹 ID',
   };
 
   // 파일 정의. headers는 [열 이름, 기본으로 넣을 값]. '=글자'는 고정값, 그 밖은 FIELDS의 키.
@@ -129,6 +129,7 @@
         headline: c.headline || '', desc: c.desc || '', url: w.url || '',
         fullUrl: w.url ? Calc.buildUrl(w.url, m, content) : '', suffix: Calc.buildUrl('', m, content).slice(1),
         asset: reg().assets[m.id + '|' + content] || '',
+        assetFile: ((f) => (f ? content + ((/\.[a-z0-9]+$/i.exec(f.name) || [''])[0]).toLowerCase() : ''))((S().creatives[content] || {}).file),
       }));
     }));
     const sets = [...new Set(rows.map((r) => r.adset))];
@@ -282,14 +283,16 @@
 
       return '<div class="card"><div class="actions" style="margin-bottom:10px"><h2 style="margin:0">' + dot(m) + h(m.name) + '</h2>' +
         '<span class="small muted">캠페인 <code>' + h(campaignName(m)) + '</code> · ' + (m.search ? '광고그룹 ' : '세트 ') + sets.length + '개 · ' + (m.search ? '키워드 ' + rows.reduce((s, g) => s + g.keywords.length, 0) + '개' : '광고 ' + rows.length + '개') + ' · 하루 ' + won(Calc.daily(m.id, ph)) + '</span>' +
-        '<span style="flex:1"></span>' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</div>' +
+        '<span style="flex:1"></span>' +
+        ((rd) => (rd.total ? '<span class="tag ' + (rd.ready === rd.total ? 'ok' : 'warn') + '">소재 파일 ' + rd.ready + '/' + rd.total + '</span>' : ''))(window.Bundle.readiness(m)) +
+        '<button class="primary sm" data-act="bundleDownload" data-media="' + m.id + '">올리기 묶음 받기 (zip)</button>' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</div>' +
         probs.map((p) => '<div class="notice warn">' + h(p) + '</div>').join('') +
         '<div class="tablewrap">' + table + '</div>' + files + '</div>';
     }).join('');
 
     return head('광고 등록', '여기서 문구·키워드·영상 ID를 채우고 매체별 등록 파일을 내려받아, 각 매체의 대량 등록에 올린다.',
       '<label class="field">예산 기준 시기<select data-chg="regPhase">' + P.phases.map((x) => opt(x.id, x.name + ' ' + md(x.start) + '~' + md(x.end), ph)).join('') + '</select></label>') +
-      '<div class="notice info"><strong>순서</strong> ① 문구·키워드·영상 ID 채우기 → ② 「파일 내려받기」 → ③ 매체의 대량 등록에 올리기 → ④ 매체에서 내용 확인 뒤 켜기 → ⑤ 여기 상태 바꾸기. 모든 광고는 <strong>일시중지</strong> 상태로 만들어진다.</div>' +
+      '<div class="notice info"><strong>순서</strong> ① 문구·키워드 채우기 → ② 매체마다 「올리기 묶음 받기」 (소재 파일 + 등록 파일 + 순서 안내가 zip 하나로) → ③ 묶음 안의 읽어보기 순서대로 매체에 올리기 → ④ 매체에서 내용 확인 뒤 켜기 → ⑤ 여기 상태 바꾸기. 모든 광고는 <strong>일시중지</strong> 상태로 만들어진다.</div>' +
       '<div class="notice warn">파일의 열 이름은 매체 템플릿과 한 글자라도 다르면 무시된다. 처음 한 번은 각 매체에서 템플릿을 내려받아 「열 맞추기」에 첫 줄을 붙여 넣고, 광고 1~2개로 먼저 올려 본다.</div>' +
       '<div class="grid" style="grid-template-columns:repeat(' + counts.length + ',minmax(0,1fr))">' + counts.map((c) => '<div class="card stat"><div class="label">' + h(c[0]) + '</div><div class="value">' + c[1] + '</div></div>').join('') + '</div>' +
       '<div class="card"><h2>광고 문구 <span class="muted small">' + h(phase.name) + ' 기간 기준</span></h2><div class="tablewrap"><table><thead><tr><th>대상</th><th>제목</th><th>설명</th></tr></thead><tbody>' + copyRows + '</tbody></table></div>' +
@@ -336,5 +339,5 @@
     return { total: keys.length, done: keys.filter((k) => st[k] && st[k] !== '반려').length };
   }
 
-  window.Register = { buildCsv, fileRows, problems, progress, FILES };
+  window.Register = { buildCsv, fileRows, problems, progress, FILES, filesOf, phaseId };
 })();
