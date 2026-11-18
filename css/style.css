@@ -330,3 +330,12 @@ details > summary { cursor: pointer; }
   .card { break-inside: avoid; box-shadow: none; }
   body { background: #fff; }
 }
+
+/* 배우 채널 링크 */
+a.chip { display: inline-block; padding: 2px 9px; margin: 2px 2px 2px 0; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; line-height: 1.6; text-decoration: none; color: var(--ink); background: var(--panel); white-space: nowrap; }
+a.chip:hover, a.chip:focus-visible { border-color: var(--accent); color: var(--accent); }
+a.chip.fan { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+tr.detail-row > td { background: var(--bg); padding: 10px 12px 14px; white-space: normal; }
+table.inner { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.inner th, table.inner td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.inner thead th { position: static; background: transparent; }

@@ -1,6 +1,6 @@
 # 출연 배우·팬 채널 조사 결과(JSON)를 엑셀과 js/cast-data.js 로 만든다.
 # 사용: python tools/build_cast.py <조사 결과 폴더>
-import json, sys, os, glob
+import json, sys, os, glob, re
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -44,6 +44,33 @@ def rel(t, k):
 
 def fan(c):
     return ' / '.join(v for v in [c.get('fanclub'), c.get('fancafe'), c.get('other_fan_channels')] if v)
+
+
+URL_RE = re.compile(r'(?:https?://)?(?:[\w-]+\.)+(?:com|net|kr|io|me|tv|jp|org)(?:/[^\s,()\[\]<>"\']*)?')
+LABELS = [('instagram.com', '인스타'), ('threads.net', '스레드'), ('x.com', 'X'), ('twitter.com', 'X'), ('youtube.com', '유튜브'), ('youtu.be', '유튜브'),
+          ('tiktok.com', '틱톡'), ('cafe.daum.net', '다음 팬카페'), ('cafe.naver.com', '네이버 팬카페'), ('weverse.io', '위버스'),
+          ('frommyarti.com', '프롬'), ('fanicon.net', '패니콘'), ('facebook.com', '페이스북'), ('weibo.com', '웨이보'),
+          ('xiaohongshu.com', '샤오훙수'), ('chzzk.naver.com', '치지직'), ('blog.naver.com', '블로그'), ('brunch.co.kr', '브런치')]
+FIELD_DEFAULT = {'fancafe': '팬카페', 'other_fan_channels': '공식 사이트'}
+
+
+def links(c):
+    """배우 한 명의 공개 채널을 [이름, 주소] 목록으로. 같은 주소는 한 번만."""
+    out, seen = [], set()
+    for field in ['instagram', 'x', 'youtube', 'tiktok', 'fancafe', 'other_fan_channels']:
+        for u in URL_RE.findall(c.get(field) or ''):
+            u = u.rstrip('.,;:')
+            if '/' not in re.sub(r'^https?://', '', u).rstrip('/') and field != 'other_fan_channels':
+                continue                      # 계정 없이 사이트 이름만 적힌 경우는 뺀다
+            if not u.startswith('http'):
+                u = 'https://' + u
+            key = re.sub(r'^https?://(www\.|m\.)?', '', u).rstrip('/').lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            label = next((name for dom, name in LABELS if dom in key), FIELD_DEFAULT.get(field, '링크'))
+            out.append([label, u])
+    return out
 
 
 wb = Workbook()
@@ -123,15 +150,16 @@ out = os.path.join(root, '원드라마_출연배우_팬채널.xlsx')
 wb.save(out)
 
 # 사이트용: 작품명 → 배우 목록 (공개 채널만)
-keys = ['name', 'role', 'group', 'agency', 'instagram', 'x', 'youtube', 'tiktok', 'fanclub', 'fancafe', 'confidence']
+keys = ['name', 'role', 'group', 'agency', 'fanclub', 'confidence']
 data = {x['title']: {'conf': x.get('work_confidence', ''), 'note': x.get('note', ''),
-                     'cast': [{k: c.get(k, '') for k in keys if c.get(k)} for c in x.get('cast', [])]}
+                     'cast': [dict({k: c.get(k, '') for k in keys if c.get(k)}, links=links(c)) for c in x.get('cast', [])]}
         for x in rows if ok(x)}
 with open(os.path.join(root, 'js', 'cast-data.js'), 'w', encoding='utf-8', newline='\n') as f:
     f.write('// tools/build_cast.py 가 만든 파일. 직접 고치지 않는다.\nwindow.CAST = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
     rdata = {t: {'d': v['release_date'], 'k': v.get('kind', ''), 'p': v.get('platform', ''), 'c': v.get('confidence', '')} for t, v in dates.items() if t in works}
     f.write('window.RELEASE = ' + json.dumps(rdata, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print('date', sum(1 for t in order if t in dates))
+print('links', sum(len(links(c)) for x in rows for c in x.get('cast', [])), 'cast with links', sum(1 for x in rows for c in x.get('cast', []) if links(c)))
 
 cast = [c for x in rows for c in x.get('cast', [])]
 print('작품', len(rows), '배우 확인', sum(ok(x) for x in rows), '배우', len(cast),
