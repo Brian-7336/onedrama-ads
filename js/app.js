@@ -9,6 +9,7 @@
     ['links', '링크 태그', 'links'],
     ['register', '광고 등록', 'register'],
     ['report', '성과 리포트', 'report'],
+    ['insights', '분석·추천', 'insights'],
     ['guide', '운영 가이드', 'guide'],
     ['data', '데이터', 'data'],
   ];

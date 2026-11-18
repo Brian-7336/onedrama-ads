@@ -317,7 +317,7 @@
       '<div class="grid" style="grid-template-columns:repeat(' + counts.length + ',minmax(0,1fr))">' + counts.map((c) => '<div class="card stat"><div class="label">' + h(c[0]) + '</div><div class="value">' + c[1] + '</div></div>').join('') + '</div>' +
       works.map((w) => {
         const ids = Calc.creativeIds(w.code);
-        return '<div class="card"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2><div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
+        return '<div class="card"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2><div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>내용</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
           ids.map((id) => {
             const t = P.creativeTypes.find((c) => c.id === id);
             const key = w.code + '_' + id;
@@ -326,11 +326,12 @@
             const qcDone = P.qcItems.filter((_, i) => qc[i]).length;
             const open = ui.openQc[key];
             return '<tr><td><code>' + h(key) + '</code></td><td>' + h(t ? t.name : '추가 소재') + '</td><td>' + h(t ? t.spec : '–') + '</td><td>' + h(t ? t.use : '–') + '</td>' +
+              '<td><select data-chg="setCreative" data-key="' + h(key) + '" data-field="tag" aria-label="' + h(key) + ' 내용">' + opt('', '(미정)', c.tag || '') + P.contentTags.map((t2) => opt(t2, t2, c.tag || '')).join('') + '</select></td>' +
               '<td><select data-chg="setCreative" data-key="' + h(key) + '" data-field="status" aria-label="' + h(key) + ' 상태">' + P.creativeStatuses.map((st) => opt(st, st, c.status || P.creativeStatuses[0])).join('') + '</select> <span class="tag ' + stCls[c.status || '요청 전'] + '">' + h(c.status || '요청 전') + '</span></td>' +
               '<td><button class="sm" data-act="toggleQc" data-key="' + h(key) + '">' + qcDone + '/' + P.qcItems.length + (qcDone === P.qcItems.length ? ' ✓' : '') + '</button></td>' +
               '<td><input type="text" style="width:100%;min-width:140px" value="' + h(c.note || '') + '" data-chg="setCreative" data-key="' + h(key) + '" data-field="note" placeholder="메모" aria-label="' + h(key) + ' 메모"></td>' +
               '<td>' + (t ? '' : '<button class="ghost sm" data-act="delCreative" data-code="' + h(w.code) + '" data-id="' + h(id) + '">✕</button>') + '</td></tr>' +
-              (open ? '<tr><td></td><td colspan="7">' + P.qcItems.map((q, i) => '<label class="check"><input type="checkbox" data-chg="setQc" data-key="' + h(key) + '" data-i="' + i + '"' + (qc[i] ? ' checked' : '') + '><span class="t">' + h(q) + '</span></label>').join('') + '</td></tr>' : '');
+              (open ? '<tr><td></td><td colspan="8">' + P.qcItems.map((q, i) => '<label class="check"><input type="checkbox" data-chg="setQc" data-key="' + h(key) + '" data-i="' + i + '"' + (qc[i] ? ' checked' : '') + '><span class="t">' + h(q) + '</span></label>').join('') + '</td></tr>' : '');
           }).join('') + '</tbody></table></div>' +
           '<form class="filters" style="margin:12px 0 0" data-submit="addCreative" data-code="' + h(w.code) + '"><input name="id" placeholder="새 소재 번호 (예: v15c, im03, bn02)" pattern="(v|im|bn)[a-z0-9]{1,6}" style="flex:0 1 280px" aria-label="새 소재 번호"><button>소재 추가</button><span class="small muted">v=영상, im=이미지, bn=배너</span></form></div>';
       }).join('') +
@@ -600,7 +601,10 @@
         });
       });
     }
-    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives: {}, extraCreatives: {}, reports, settings: { ytMedium: 'paid_social', daily: {}, accounts: Calc.accounts() } });
+    const tagBy = { v06: '예고편', v15a: '갈등·반전', v15b: '설렘·로맨스', v30a: '예고편', v60a: '예고편', im01: '배우 중심', im02: '명대사' };
+    const creatives = {};
+    works.forEach((w) => Object.keys(tagBy).forEach((id) => { creatives[w.code + '_' + id] = { tag: tagBy[id], status: '집행 중' }; }));
+    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives, extraCreatives: {}, reports, settings: { ytMedium: 'paid_social', daily: {}, accounts: Calc.accounts() } });
     toast('예시 데이터를 넣었습니다');
   };
 
