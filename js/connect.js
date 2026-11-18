@@ -6,7 +6,7 @@
   const { h, toast } = window.UI;
   const S = () => Store.state;
   const cfg = () => { const s = S().settings; s.connect = s.connect || {}; return s.connect; };
-  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, yt: { token: '', channel: '', busy: false, log: [] } };
+  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, yt: { token: '', channel: '', channelId: '', match: false, busy: false, log: [] } };
   const ORIGIN = location.origin;
 
   const log = (k, msg, cls) => { st[k].log.push([new Date().toTimeString().slice(0, 8), msg, cls || '']); if (st[k].log.length > 60) st[k].log.shift(); window.App.render(true); };
@@ -46,12 +46,13 @@
   async function metaAfterLogin() {
     const acc = await graph('me/adaccounts', { fields: 'account_id,name,currency,account_status', limit: 100 });
     st.meta.accounts = acc.data || [];
-    const pages = await graph('me/accounts', { fields: 'id,name', limit: 100 });
+    const pages = await graph('me/accounts', { fields: 'id,name,username', limit: 100 });
     st.meta.pages = pages.data || [];
+    const mine = st.meta.pages.find((p) => (p.username || '').toLowerCase() === String(P.facebookPage || '').toLowerCase()) || st.meta.pages.find((p) => /원드라마/.test(p.name || ''));
     Store.update((s) => {
       const c = s.settings.connect;
       if (!st.meta.accounts.some((a) => a.account_id === c.metaAccount)) c.metaAccount = st.meta.accounts.length === 1 ? st.meta.accounts[0].account_id : '';
-      if (!st.meta.pages.some((p) => p.id === c.metaPage)) c.metaPage = st.meta.pages.length === 1 ? st.meta.pages[0].id : '';
+      if (!st.meta.pages.some((p) => p.id === c.metaPage)) c.metaPage = mine ? mine.id : st.meta.pages.length === 1 ? st.meta.pages[0].id : '';
     });
     log('meta', '로그인했습니다. 광고 계정 ' + st.meta.accounts.length + '개, 페이지 ' + st.meta.pages.length + '개', 'ok');
   }
@@ -169,7 +170,11 @@
     const j = await r.json();
     if (!r.ok) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status);
     st.yt.channel = j.items && j.items[0] ? j.items[0].snippet.title : '';
-    log('yt', st.yt.channel ? '로그인했습니다. 채널: ' + st.yt.channel : '로그인했지만 이 계정에 유튜브 채널이 없습니다', st.yt.channel ? 'ok' : 'bad');
+    st.yt.channelId = j.items && j.items[0] ? j.items[0].id : '';
+    st.yt.match = !P.youtubeChannelId || st.yt.channelId === P.youtubeChannelId;
+    if (!st.yt.channel) log('yt', '로그인했지만 이 계정에 유튜브 채널이 없습니다', 'bad');
+    else if (!st.yt.match) log('yt', '로그인한 채널 「' + st.yt.channel + '」은 원드라마 채널이 아닙니다. 로그아웃한 뒤 원드라마 채널(브랜드 계정)을 골라 주세요', 'bad');
+    else log('yt', '로그인했습니다. 원드라마 채널이 맞습니다: ' + st.yt.channel, 'ok');
   }
   async function ytUploadOne(r, f, blob) {
     const meta = {
@@ -192,6 +197,7 @@
   // 영상을 채널에 「일부 공개」로 올리고, 받은 영상 ID를 등록 표에 채운다.
   async function ytUpload() {
     if (!st.yt.channel) throw new Error('유튜브 채널이 있는 계정으로 로그인해 주세요');
+    if (!st.yt.match) throw new Error('원드라마 채널이 아닙니다 (' + st.yt.channel + '). 다른 채널에는 올리지 않습니다');
     const seen = new Set();
     const rows = rowsOf('youtube').filter((r) => !seen.has(r.ad) && seen.add(r.ad));
     let up = 0, skip = 0, miss = 0, locked = 0;
@@ -255,7 +261,7 @@
     const guide = '<details class="cguide"' + (c.googleClientId ? '' : ' open') + '><summary>처음 한 번: 구글 클라이언트 ID 만들기 (15분)</summary><ol>' +
       '<li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">console.cloud.google.com</a>에서 프로젝트를 만든다.</li>' +
       '<li>「API 및 서비스」 → 「라이브러리」에서 「YouTube Data API v3」를 사용 설정한다.</li>' +
-      '<li>「OAuth 동의 화면」을 만든다. 테스트 사용자에 원드라마 채널을 관리하는 구글 계정을 넣는다.</li>' +
+      '<li>「OAuth 동의 화면」을 만든다. 테스트 사용자에 <a href="https://www.youtube.com/channel/' + h(P.youtubeChannelId) + '" target="_blank" rel="noopener noreferrer">원드라마 채널</a>을 관리하는 구글 계정을 넣는다.</li>' +
       '<li>「사용자 인증 정보」 → 「OAuth 클라이언트 ID」 → 유형 「웹 애플리케이션」. 승인된 자바스크립트 원본에 <code>' + h(ORIGIN) + '</code> 를 넣는다.</li>' +
       '<li>만들어진 「클라이언트 ID」를 아래 칸에 붙여 넣는다. 클라이언트 보안 비밀번호는 넣지 않는다.</li></ol>' +
       '<div class="filters"><label class="field">구글 클라이언트 ID<input type="text" style="width:min(460px,100%)" value="' + h(c.googleClientId || '') + '" data-chg="cnSet" data-key="googleClientId" placeholder="....apps.googleusercontent.com"></label></div>' +
@@ -264,8 +270,8 @@
     if (!st.yt.token) {
       body = '<button class="primary" data-act="cnYtLogin"' + (c.googleClientId ? '' : ' disabled') + busyAttr('yt') + '>구글로 로그인</button> <span class="small muted">' + (c.googleClientId ? '원드라마 채널(브랜드 계정)을 골라 허용합니다.' : '클라이언트 ID를 넣으면 눌러집니다.') + '</span>';
     } else {
-      body = '<p style="margin:0 0 8px">채널: <strong>' + h(st.yt.channel || '없음') + '</strong> <span class="small muted">원드라마 채널이 아니면 로그아웃하고 다시 고르세요.</span></p>' +
-        '<div class="actions"><button class="primary" data-act="cnYtUpload"' + busyAttr('yt') + '>영상 올리기 · 일부 공개 (' + uploaded + '/' + withFile + ')</button>' +
+      body = '<p style="margin:0 0 8px">채널: <strong>' + h(st.yt.channel || '없음') + '</strong> ' + (st.yt.match ? '<span class="tag ok">원드라마 채널 맞음</span>' : '<span class="tag bad">원드라마 채널이 아님. 로그아웃하고 다시 고르세요</span>') + '</p>' +
+        '<div class="actions"><button class="primary" data-act="cnYtUpload"' + (st.yt.match ? '' : ' disabled') + busyAttr('yt') + '>영상 올리기 · 일부 공개 (' + uploaded + '/' + withFile + ')</button>' +
         '<button class="link-btn" data-act="cnYtLogout">로그아웃</button></div>' +
         '<p class="small muted" style="margin:6px 0 0">사이트에 올린 영상 ' + withFile + '/' + uniq.length + '개를 채널에 올리고 영상 ID를 아래 표에 채웁니다. 그다음 「올리기 묶음」의 CSV를 구글 애즈 에디터로 가져옵니다.</p>';
     }
@@ -310,7 +316,7 @@
     if (!(window.google && window.google.accounts)) return job('yt', async () => { await loadScript('https://accounts.google.com/gsi/client'); log('yt', '준비됐습니다. 「구글로 로그인」을 한 번 더 눌러 주세요'); });
     return job('yt', ytLogin);
   };
-  Actions.cnYtLogout = () => { if (st.yt.token && window.google) try { window.google.accounts.oauth2.revoke(st.yt.token); } catch (e) { /* 무시 */ } st.yt.token = ''; st.yt.channel = ''; };
+  Actions.cnYtLogout = () => { if (st.yt.token && window.google) try { window.google.accounts.oauth2.revoke(st.yt.token); } catch (e) { /* 무시 */ } st.yt.token = ''; st.yt.channel = ''; st.yt.channelId = ''; st.yt.match = false; };
   Actions.cnYtUpload = () => {
     const n = [...new Set(rowsOf('youtube').filter((r) => fileOf(r.ad) && !reg().assets[r.key]).map((r) => r.ad))].length;
     if (!n) { toast('새로 올릴 영상이 없습니다'); return false; }

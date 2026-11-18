@@ -10,9 +10,11 @@ window.PLAN = {
   tools: [
     { id: 'ga4', name: 'GA4', url: 'https://analytics.google.com/analytics/web/', note: '첫 재생, 3화 시청, 결제' },
     { name: '원드라마', url: 'https://drama.onestore.co.kr', note: '랜딩 확인' },
-    { name: '인스타그램 @onestoredrama', url: 'https://www.instagram.com/onestoredrama/', note: '원드라마 계정' },
-    { name: '스레드 @onestoredrama', url: 'https://www.threads.net/@onestoredrama', note: '원드라마 계정' },
+    { name: '인스타그램 @onestoredrama', url: 'https://www.instagram.com/onestoredrama', note: '원드라마 계정' },
     { name: 'X @ONEstoreDrama', url: 'https://x.com/ONEstoreDrama', note: '원드라마 계정' },
+    { name: '페이스북 원드라마', url: 'https://www.facebook.com/ONEstoreDrama', note: '원드라마 계정. 메타 광고에 쓰는 페이지' },
+    { name: '스레드 @onestoredrama', url: 'https://www.threads.com/@onestoredrama', note: '원드라마 계정' },
+    { name: '유튜브 원드라마', url: 'https://www.youtube.com/channel/UCo3OGF1j0LmTPzWpjOcF_Lg', note: '원드라마 계정. 광고 영상을 올리는 채널' },
   ],
   team: [
     { role: '총괄', name: '권오성' },
@@ -223,13 +225,16 @@ window.PLAN = {
     ['그 밖의 CP', '홍보 허락 범위 미확인. 광고에 쓰기 전에 확인한다.'],
   ],
 
+  // 로그인으로 올릴 때 다른 계정에 올리지 않도록 확인하는 값
+  youtubeChannelId: 'UCo3OGF1j0LmTPzWpjOcF_Lg',
+  facebookPage: 'ONEstoreDrama',
   sns: {
     accounts: [
-      ['인스타그램', '@onestoredrama'],
-      ['X', '@ONEstoreDrama'],
-      ['페이스북', '원드라마'],
-      ['스레드', '@onestoredrama'],
-      ['유튜브', '원드라마'],
+      ['인스타그램', '@onestoredrama', 'https://www.instagram.com/onestoredrama'],
+      ['X', '@ONEstoreDrama', 'https://x.com/ONEstoreDrama'],
+      ['페이스북', '원드라마', 'https://www.facebook.com/ONEstoreDrama'],
+      ['스레드', '@onestoredrama', 'https://www.threads.com/@onestoredrama'],
+      ['유튜브', '원드라마', 'https://www.youtube.com/channel/UCo3OGF1j0LmTPzWpjOcF_Lg'],
     ],
     support: [
       ['부탁한 것', '원스토어 이름으로 운영 중인 SNS 계정 목록, 원드라마 계정의 신작 예고편·카드를 공식 계정에서 리트윗·공유, 같이 해 볼 아이디어'],
