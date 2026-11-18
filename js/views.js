@@ -373,11 +373,13 @@
 
     const as = window.Assets.summary();
     return head('소재', '작품 ' + works.length + '편 · 소재 ' + all.length + '종 · 담당 마스. 매주 효율이 낮은 2종을 빼고 새 2종을 넣는다.') +
-      '<div class="notice info">소재가 오면 「파일 올리기」로 넣어 두세요. 길이·비율·크기를 자동으로 검사하고 상태를 「검수 중」으로 바꿉니다. 올린 파일 ' + as.n + '개 · ' + as.text + (as.bad ? ' · <strong>규격 확인 ' + as.bad + '개</strong>' : '') + '. 파일은 이 브라우저에만 보관되고, 매체에는 아직 자동으로 올라가지 않습니다.</div>' +
+      '<div class="notice info">소재가 오면 작품 칸으로 끌어다 놓으세요. 길이·비율·크기를 자동으로 검사하고 상태를 「검수 중」으로 바꿉니다. 올린 파일 ' + as.n + '개 · ' + as.text + (as.bad ? ' · <strong>규격 확인 ' + as.bad + '개</strong>' : '') + '. 파일은 이 브라우저에만 보관되고, 매체에는 아직 자동으로 올라가지 않습니다.</div>' +
       '<div class="grid" style="grid-template-columns:repeat(' + counts.length + ',minmax(0,1fr))">' + counts.map((c) => '<div class="card stat"><div class="label">' + h(c[0]) + '</div><div class="value">' + c[1] + '</div></div>').join('') + '</div>' +
       works.map((w) => {
         const ids = Calc.creativeIds(w.code);
-        return '<div class="card"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2><div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>파일</th><th>내용</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
+        return '<div class="card" data-dropwork="' + h(w.code) + '"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2>' +
+          '<p class="dropzone">이 작품의 소재 파일을 여기로 한꺼번에 끌어다 놓으세요. 파일 이름에 소재 번호(예: v15a)가 있으면 그 칸에, 없으면 길이·비율이 맞는 빈 칸에 넣습니다. 특정 칸에 넣으려면 그 줄 위에 놓습니다.</p>' +
+          '<div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>파일</th><th>내용</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
           ids.map((id) => {
             const t = P.creativeTypes.find((c) => c.id === id);
             const key = w.code + '_' + id;
@@ -385,7 +387,7 @@
             const qc = c.qc || [];
             const qcDone = P.qcItems.filter((_, i) => qc[i]).length;
             const open = ui.openQc[key];
-            return '<tr><td><code>' + h(key) + '</code></td><td>' + h(t ? t.name : '추가 소재') + '</td><td>' + h(t ? t.spec : '–') + '</td><td>' + h(t ? t.use : '–') + '</td><td class="wrap" style="min-width:190px">' + window.Assets.cell(key) + '</td>' +
+            return '<tr data-drop="' + h(key) + '"><td><code>' + h(key) + '</code></td><td>' + h(t ? t.name : '추가 소재') + '</td><td>' + h(t ? t.spec : '–') + '</td><td>' + h(t ? t.use : '–') + '</td><td class="wrap" style="min-width:190px">' + window.Assets.cell(key) + '</td>' +
               '<td><select data-chg="setCreative" data-key="' + h(key) + '" data-field="tag" aria-label="' + h(key) + ' 내용">' + opt('', '(미정)', c.tag || '') + P.contentTags.map((t2) => opt(t2, t2, c.tag || '')).join('') + '</select></td>' +
               '<td><select data-chg="setCreative" data-key="' + h(key) + '" data-field="status" aria-label="' + h(key) + ' 상태">' + P.creativeStatuses.map((st) => opt(st, st, c.status || P.creativeStatuses[0])).join('') + '</select> <span class="tag ' + stCls[c.status || '요청 전'] + '">' + h(c.status || '요청 전') + '</span></td>' +
               '<td><button class="sm" data-act="toggleQc" data-key="' + h(key) + '">' + qcDone + '/' + P.qcItems.length + (qcDone === P.qcItems.length ? ' ✓' : '') + '</button></td>' +

@@ -94,7 +94,7 @@
   function cell(key) {
     const f = (Store.state.creatives[key] || {}).file;
     const input = '<input type="file" accept="video/*,image/*" data-chg="uploadAsset" data-key="' + h(key) + '" hidden>';
-    if (!f) return '<label class="btn sm upload">파일 올리기' + input + '</label>';
+    if (!f) return '<label class="btn sm upload">파일 올리기 · 끌어다 놓기' + input + '</label>';
     const info = f.w + '×' + f.h + (f.dur != null ? ' · ' + f.dur + '초' : '') + ' · ' + mb(f.size);
     return '<div class="asset"><button class="link-btn asset-name" data-act="previewAsset" data-key="' + h(key) + '" title="' + h(f.name) + ' 미리 보기">' + h(f.name) + '</button>' +
       '<span class="small muted">' + info + '</span>' +
@@ -152,5 +152,68 @@
     return false;
   };
 
-  window.Assets = { cell, put, check, expected, summary };
+  // ---------- 끌어다 놓기 ----------
+  // 소재 줄에 놓으면 그 소재에 넣는다. 작품 카드에 여러 개를 놓으면 알아서 배정한다:
+  // 파일 이름에 소재 번호(w01_v15a 또는 v15a)가 있으면 그 칸, 없으면 규격이 맞는 빈 칸.
+  async function assign(code, files) {
+    const ids = Calc.creativeIds(code);
+    const taken = new Set();
+    const placed = [];
+    const left = [];
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      let id = ids.find((x) => name.includes(code + '_' + x)) || ids.find((x) => new RegExp('(^|[^a-z0-9])' + x + '([^a-z0-9]|$)').test(name));
+      if (!id) {
+        let meta = null;
+        try { meta = await probe(file); } catch (e) { left.push(file.name + ' (읽을 수 없음)'); continue; }
+        id = ids.find((x) => {
+          const key = code + '_' + x;
+          if (taken.has(key) || (Store.state.creatives[key] || {}).file) return false;
+          const t = P.creativeTypes.find((c) => c.id === x);
+          return t && check(x, t.spec, meta).length === 0;
+        });
+      }
+      if (!id || taken.has(code + '_' + id)) { left.push(file.name + ' (맞는 칸 없음)'); continue; }
+      taken.add(code + '_' + id);
+      try { await put(code + '_' + id, file); placed.push(file.name + ' → ' + id); } catch (e) { left.push(file.name + ' (읽을 수 없음)'); }
+    }
+    return { placed, left };
+  }
+
+  const view = document.getElementById('view');
+  const zoneOf = (ev) => ev.target.closest && (ev.target.closest('[data-drop]') || ev.target.closest('[data-dropwork]'));
+  const hasFiles = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes('Files');
+  let hot = null;
+  const light = (el) => { if (hot !== el) { if (hot) hot.classList.remove('dropping'); hot = el; if (el) el.classList.add('dropping'); } };
+  view.addEventListener('dragover', (ev) => {
+    if (!hasFiles(ev)) return;
+    const z = zoneOf(ev);
+    if (!z) { light(null); return; }
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'copy';
+    light(z);
+  });
+  view.addEventListener('dragleave', (ev) => { if (!view.contains(ev.relatedTarget)) light(null); });
+  view.addEventListener('drop', (ev) => {
+    const z = zoneOf(ev);
+    light(null);
+    if (!z || !hasFiles(ev)) return;
+    ev.preventDefault();
+    const files = [...ev.dataTransfer.files];
+    if (!files.length) return;
+    toast('파일 ' + files.length + '개를 읽는 중입니다…');
+    const job = z.dataset.drop
+      ? put(z.dataset.drop, files[0]).then((problems) => ({ placed: [files[0].name], left: files.slice(1).map((f) => f.name + ' (한 칸에 하나만)'), problems }))
+      : assign(z.dataset.dropwork, files);
+    job.then((r) => {
+      const bad = r.problems && r.problems.length ? ' 규격 확인: ' + r.problems[0] : '';
+      toast((r.placed.length ? r.placed.length + '개 올렸습니다.' : '올린 파일이 없습니다.') + bad + (r.left.length ? ' 못 넣은 파일: ' + r.left.join(', ') : ''));
+      window.App.render(true);
+    }).catch((e) => toast('올리지 못했습니다: ' + (e && e.message ? e.message : '알 수 없는 오류')));
+  });
+  // 칸 밖에 떨어뜨려도 브라우저가 파일을 열어 버리지 않게 한다.
+  window.addEventListener('dragover', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
+  window.addEventListener('drop', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
+
+  window.Assets = { cell, put, check, expected, summary, assign };
 })();
