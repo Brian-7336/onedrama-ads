@@ -11,6 +11,7 @@
       creatives: {},       // 'w01_v15a' → {status, qc: [bool], note}
       extraCreatives: {},  // 'w01' → ['v15c', ...] (주간 교체로 추가한 소재)
       sources: {},         // 작품 코드 → 원본 영상 정보 {name, size, w, h, dur, step, diffs}. 파일 자체는 IndexedDB에 있다
+      subtitles: {},       // 작품 코드 → 자막 {name, cues: [[시작초, 끝초, 글자]]}
       flowSeen: {},        // 읽기만 하는 단계를 열어 봤는지 {playbook: true, links: true}
       reports: [],         // [{id, date, media, work, creative, imp, clk, start, ep3, pay, cost}]
       settings: { ytMedium: 'paid_social', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)

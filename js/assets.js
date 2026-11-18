@@ -163,6 +163,12 @@
     const left = [];
     for (const file of files) {
       const name = file.name.toLowerCase();
+      if (/\.srt$/.test(name)) {
+        // 자막 파일은 이 작품의 자막으로 넣는다. 여러 개면 영어(_en) 아닌 것을 우선한다.
+        if (/_en\.srt$/.test(name) && files.some((f) => /\.srt$/i.test(f.name) && !/_en\.srt$/i.test(f.name))) { left.push(file.name + ' (다른 자막 사용)'); continue; }
+        try { const c = await window.Maker.setSubs(code, file); placed.push(file.name + ' → 자막 ' + c.length + '줄'); } catch (e) { left.push(file.name + ' (자막을 읽을 수 없음)'); }
+        continue;
+      }
       let id = ids.find((x) => name.includes(code + '_' + x)) || ids.find((x) => new RegExp('(^|[^a-z0-9])' + x + '([^a-z0-9]|$)').test(name));
       if (!id) {
         let meta = null;

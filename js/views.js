@@ -405,7 +405,7 @@
       works.map((w) => {
         const ids = Calc.creativeIds(w.code);
         return '<div class="card" data-dropwork="' + h(w.code) + '"><h2><code>' + h(w.code) + '</code> ' + h(w.title) + '</h2>' +
-          '<p class="dropzone">이 작품의 소재 파일을 여기로 한꺼번에 끌어다 놓으세요. 파일 이름에 소재 번호(예: v15a)가 있으면 그 칸에, 없으면 길이·비율이 맞는 빈 칸에 넣습니다. 맞는 칸이 없는 영상(1화, 예고편)은 원본 영상으로 넣어 두고 거기서 잘라 만듭니다. 특정 칸에 넣으려면 그 줄 위에 놓습니다.</p>' +
+          '<p class="dropzone">이 작품의 소재 파일을 여기로 한꺼번에 끌어다 놓으세요. 파일 이름에 소재 번호(예: v15a)가 있으면 그 칸에, 없으면 길이·비율이 맞는 빈 칸에 넣습니다. 맞는 칸이 없는 영상(1화, 예고편)은 원본 영상으로, 자막 파일(.srt)은 자막으로 넣어 두고 거기서 잘라 만듭니다. 특정 칸에 넣으려면 그 줄 위에 놓습니다.</p>' +
           window.Maker.sourceRow(w.code) +
           '<div class="tablewrap"><table><thead><tr><th>번호</th><th>종류</th><th>비율·크기</th><th>쓰는 곳</th><th>파일</th><th>내용</th><th>상태</th><th>검수</th><th>메모</th><th></th></tr></thead><tbody>' +
           ids.map((id) => {

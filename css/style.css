@@ -483,3 +483,13 @@ label.btn.primary:hover { filter: brightness(1.08); }
 #busy::backdrop { background: rgba(0, 0, 0, .25); }
 #busy .spin { width: 20px; height: 20px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 자막 */
+.srcsub { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 12px; border-left: 1px solid var(--line); }
+.srcrow.need .srcsub .muted { flex: none; }
+.cues { display: flex; flex-direction: column; gap: 4px; max-height: 170px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-sm); flex: none; }
+.cues p { margin: 0; }
+.cue { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.cue span { flex: none; width: 44px; text-align: right; }
+.cue input { flex: 1; min-width: 0; }
+.maker-run .spin { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }

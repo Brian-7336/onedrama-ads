@@ -89,18 +89,20 @@
     const d = src.diffs || [], st = src.step || 1;
     if (!d.length) return [0, L];
     const avg = d.reduce((a, b) => a + b, 0) / d.length;
-    const thr = Math.max(22, avg * 2.5);
-    const cuts = [0];
-    d.forEach((x, i) => { if (x > thr) cuts.push((i + 1) * st); });
+    const thr = Math.max(18, avg * 1.5);
+    // 후보: 원본의 모든 표본 지점. 장면이 바뀌는 곳에서 시작하면 가산점을 준다.
+    const starts = [0];
+    d.forEach((x, i) => starts.push((i + 1) * st));
     let best = null;
-    cuts.filter((c) => c + L <= D).forEach((c) => {
+    starts.filter((c) => c + L <= D + 0.05).forEach((c, k) => {
       let sc = 1;
       d.forEach((x, i) => { const t = (i + 1) * st; if (t > c && t <= c + L) sc += Math.min(x, thr * 2); });
-      (avoid || []).forEach((a) => { const ov = Math.min(c + L, a[1]) - Math.max(c, a[0]); if (ov > 0) sc *= 1 - 0.9 * ov / Math.min(L, a[1] - a[0]); });
+      if (c === 0 || d[k - 1] > thr) sc *= 1.25;
+      (avoid || []).forEach((a) => { const ov = Math.min(c + L, a[1]) - Math.max(c, a[0]); if (ov > 0) sc *= 1 - 0.95 * ov / Math.min(L, a[1] - a[0]); });
       if (!best || sc > best.sc) best = { c, sc };
     });
     const c = best ? best.c : Math.max(0, (D - L) / 2);
-    return [r1(c), r1(c + L)];
+    return [r1(Math.min(c, Math.max(0, D - L))), r1(Math.min(c + L, D))];
   }
 
   // ---------- 원본 영상 보관 ----------
@@ -117,6 +119,39 @@
     } finally { b.done(); }
   }
 
+  // ---------- 자막 (.srt) ----------
+  const subsOf = (code) => ((Store.state.subtitles = Store.state.subtitles || {})[code] || null);
+  function parseSrt(text) {
+    const sec = (x) => { const m = /(\d+):(\d+):(\d+)[,.](\d+)/.exec(x); return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] + +('0.' + m[4]) : NaN; };
+    const cues = [];
+    text.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n\s*\n/).forEach((blk) => {
+      const ls = blk.split('\n').map((l) => l.trim()).filter(Boolean);
+      const i = ls.findIndex((l) => l.includes('-->'));
+      if (i < 0) return;
+      const tm = ls[i].split('-->');
+      const a = sec(tm[0]), b = sec(tm[1]);
+      const t = ls.slice(i + 1).join(' ').replace(/<[^>]+>/g, '').replace(/\{[^}]*\}/g, '').replace(/\s+/g, ' ').trim();
+      if (isFinite(a) && isFinite(b) && t) cues.push([Math.round(a * 100) / 100, Math.round(b * 100) / 100, t]);
+    });
+    return cues;
+  }
+  async function setSubs(code, file) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let text;
+    if (buf[0] === 0xff && buf[1] === 0xfe) text = new TextDecoder('utf-16le').decode(buf);
+    else { try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { text = new TextDecoder('euc-kr').decode(buf); } }
+    const cues = parseSrt(text);
+    if (!cues.length) throw new Error('자막을 읽지 못했습니다 (.srt 형식인지 확인해 주세요)');
+    Store.update((st) => { (st.subtitles = st.subtitles || {})[code] = { name: file.name, cues }; });
+    return cues;
+  }
+  // 원본의 a~b초에 걸치는 자막만 뽑는다 (시각은 원본 기준 그대로).
+  function cuesFor(code, a, b) {
+    const sb = subsOf(code);
+    return sb ? sb.cues.filter((c) => c[1] > a && c[0] < b).map((c) => c.slice()) : [];
+  }
+  const srcTime = (r, t) => { let x = t; for (const sg of r.segs) { const d = sg[1] - sg[0]; if (x <= d) return sg[0] + x; x -= d; } return r.segs[r.segs.length - 1][1]; };
+
   // ---------- 편집 내용 기본값 ----------
   function defaults(key) {
     const T = target(key), code = codeOf(key);
@@ -128,6 +163,7 @@
     const seg = pick(src, L, used);
     const base15 = T.kind === 'image' ? pick(src, 15, []) : seg;
     return {
+      subsOn: true, cues: T.kind === 'image' ? [] : cuesFor(code, seg[0], seg[1]),
       src: 'src|' + code, segs: [seg], at: r1(clamp(base15[0] + ({ im01: 2, im02: 6, bn01: 10 }[T.id] || 3), 0, Math.max(0, src.dur - 0.2))),
       fit: 'auto', pos: 50, genre: wd.genre || '', title: w.title || '', sub: '', hook: '',
       cta1: FORM.cta1, cta2: FORM.cta2, benefit: wd.free ? '1~' + wd.free + '화 무료' : '', end: L <= 6 ? 1.5 : L <= 15 ? 3 : 4,
@@ -213,8 +249,23 @@
       ctx.globalAlpha = clamp((3 - t) / 0.3, 0, 1);
       ctx.textAlign = 'center'; ctx.font = '800 ' + Math.round(48 * U) + 'px ' + FORM.sans;
       const ls = wrap(ctx, r.sub, W - 140 * U, 2);
-      ls.forEach((l, i) => ctx.fillText(l, W / 2, H - (tall ? 400 : 130) * U + (i - (ls.length - 1)) * 62 * U));
+      ls.forEach((l, i) => ctx.fillText(l, W / 2, H - (tall ? 420 : 200) * U + (i - (ls.length - 1)) * 62 * U));
       ctx.globalAlpha = 1;
+    }
+    // 원본 자막: 원본 시각에 맞는 줄을 아래쪽에 그린다. 끝 화면에서는 함께 어두워진다.
+    if (!still && r.subsOn !== false && r.cues && r.cues.length) {
+      const ts = srcTime(r, t);
+      const cue = r.cues.find((c) => ts >= c[0] && ts < c[1]);
+      const e0 = Math.min(r.end == null ? 3 : r.end, total * 0.5);
+      const fade = e0 > 0 ? 1 - clamp((t - (total - e0)) / 0.4, 0, 1) : 1;   // 끝 화면이 뜨면 자막은 사라진다
+      if (cue && cue[2] && fade > 0) {
+        ctx.globalAlpha = fade;
+        ctx.textAlign = 'center'; ctx.font = '800 ' + Math.round(46 * U) + 'px ' + FORM.sans;
+        ctx.lineWidth = 6 * U; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineJoin = 'round';
+        const ls = wrap(ctx, cue[2], W - 120 * U, 2);
+        ls.forEach((l, i) => { const yy = H - (tall ? 300 : 110) * U + i * 60 * U; ctx.strokeText(l, W / 2, yy); ctx.fillText(l, W / 2, yy); });
+        ctx.globalAlpha = 1;
+      }
     }
     shadow(ctx, false, U);
 
@@ -358,16 +409,28 @@
     const ids = window.Calc.creativeIds(code);
     const empty = ids.filter((id) => !(Store.state.creatives[code + '_' + id] || {}).file).length;
     const input = '<input type="file" accept="video/*" data-chg="makerSource" data-code="' + h(code) + '" hidden>';
+    const sb = subsOf(code);
+    const sin = '<input type="file" accept=".srt,.txt" data-chg="makerSubs" data-code="' + h(code) + '" hidden>';
+    const subHtml = ' <span class="srcsub"><strong>자막</strong> ' + (sb ? h(sb.name) + ' <span class="muted small">' + sb.cues.length + '줄</span> <label class="link-btn">바꾸기' + sin + '</label>'
+      : '<span class="muted">없음</span> <label class="btn sm upload">자막 파일(.srt) 넣기' + sin + '</label>') + '</span>';
     return '<div class="srcrow' + (src ? '' : ' need') + '"><strong>원본 영상</strong> ' +
       (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label>'
         : '<span class="muted">없음. 1화나 예고편 파일을 고르면 원드라마 형식으로 잘라 빈 칸을 채웁니다.</span> <label class="btn primary srcpick">＋ 원본 영상 고르기' + input + '</label>') +
-      (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
+      subHtml + (src && noSubKeys(code).length ? ' <button class="sm primary" data-act="makerRedoSubs" data-code="' + h(code) + '">자막 넣어 영상 ' + noSubKeys(code).length + '개 다시 만들기</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
   }
   Actions.makerSource = (el) => {
     const file = el.files && el.files[0];
     if (!file) return false;
     setSource(el.dataset.code, file).then((a) => { toast('원본 영상을 넣었습니다 (' + a.dur + '초). 「빈 칸 자동으로 만들기」를 누르세요'); window.App.render(true); })
       .catch((e) => toast('원본을 넣지 못했습니다: ' + e.message));
+    return false;
+  };
+
+  Actions.makerSubs = (el) => {
+    const file = el.files && el.files[0];
+    if (!file) return false;
+    setSubs(el.dataset.code, file).then((c) => { toast('자막 ' + c.length + '줄을 넣었습니다. 이제 만드는 영상에 자막이 들어갑니다'); window.App.render(true); })
+      .catch((e) => toast('자막을 넣지 못했습니다: ' + e.message));
     return false;
   };
 
@@ -381,14 +444,12 @@
     return box;
   }
 
-  // 빈 칸을 차례로 만든다.
-  Actions.makerAuto = (el) => {
-    const code = el.dataset.code;
-    const keys = window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((k) => !(Store.state.creatives[k] || {}).file);
+  // 여러 칸을 차례로 만든다. recipeOf(key)가 편집 내용을 준다.
+  function runBatch(keys, recipeOf, what) {
     const secs = keys.reduce((a, k) => a + (target(k).dur || 1), 0);
     const ctl = { stop: false };
-    const box = dialog('maker-run', '<h3>빈 칸 ' + keys.length + '개를 만드는 중</h3><p class="small muted">영상은 실제 길이만큼 걸립니다 (모두 약 ' + Math.ceil(secs / 60) + '분). 이 창을 다른 탭이나 창으로 가리면 멈추니 켜 둔 채 기다려 주세요.</p><ol class="runlist">' +
-      keys.map((k) => '<li data-k="' + h(k) + '">' + h(window.Calc.short(k)) + ' · ' + h(target(k).name) + ' <span class="st muted">대기</span></li>').join('') + '</ol><div class="row"><button data-x="stop">멈추기</button></div>');
+    const box = dialog('maker-run', '<h3>' + h(what) + ' ' + keys.length + '개를 만드는 중</h3><p class="small muted">영상은 실제 길이만큼 걸립니다 (모두 약 ' + Math.ceil(secs / 60) + '분). 이 창을 다른 탭이나 창으로 가리면 멈추니 켜 둔 채 기다려 주세요.</p><ol class="runlist">' +
+      keys.map((k) => '<li data-k="' + h(k) + '">' + h(window.Calc.short(k)) + ' · ' + h(target(k).name) + ' <span class="st muted">대기</span></li>').join('') + '</ol><div class="row"><span class="spin" aria-hidden="true"></span><button data-x="stop">멈추기</button></div>');
     box.addEventListener('cancel', (ev) => ev.preventDefault());
     box.querySelector('[data-x=stop]').onclick = () => { ctl.stop = true; };
     (async () => {
@@ -397,16 +458,38 @@
         if (ctl.stop) break;
         const st = box.querySelector('li[data-k="' + k + '"] .st');
         try {
-          const problems = await makeInto(k, defaults(k), (p) => { st.textContent = Math.round(p * 100) + '%'; }, ctl);
+          const problems = await makeInto(k, recipeOf(k), (p) => { st.textContent = Math.round(p * 100) + '%'; }, ctl);
           st.textContent = problems.length ? '넣음 · 규격 확인: ' + problems[0] : '넣음 ✓';
           st.className = 'st ' + (problems.length ? 'warn-t' : 'ok-t');
           ok++;
         } catch (e) { st.textContent = '실패: ' + e.message; st.className = 'st bad-t'; }
       }
       box.querySelector('h3').textContent = (ctl.stop ? '멈췄습니다. ' : '끝났습니다. ') + ok + '개를 넣었습니다';
+      const sp = box.querySelector('.spin'); if (sp) sp.remove();
       const b = box.querySelector('[data-x=stop]'); b.textContent = '닫기'; b.onclick = () => box.close();
       window.App.render(true);
     })();
+  }
+  // 빈 칸을 차례로 만든다.
+  Actions.makerAuto = (el) => {
+    const code = el.dataset.code;
+    runBatch(window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((k) => !(Store.state.creatives[k] || {}).file), defaults, '빈 칸');
+    return false;
+  };
+  // 자막 없이 만든 영상: 자막 파일이 있는데 편집 내용에 자막이 없는 자동 제작 영상.
+  function noSubKeys(code) {
+    if (!subsOf(code)) return [];
+    return window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((k) => {
+      const c = Store.state.creatives[k] || {};
+      return c.file && c.file.made && target(k).kind === 'video' && c.edit && c.edit.src === 'src|' + code && c.edit.subsOn !== false && !(c.edit.cues || []).length && cuesFor(code, c.edit.segs[0][0], c.edit.segs[0][1]).length;
+    });
+  }
+  Actions.makerRedoSubs = (el) => {
+    const code = el.dataset.code;
+    runBatch(noSubKeys(code), (k) => { const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit)); r.subsOn = true;
+      // 예전 방식으로 고른 구간이 다른 소재와 똑같으면(예: 15초 A·B가 둘 다 0초부터) 다른 장면으로 다시 고른다.
+      const same = window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((x) => x !== k && target(x).kind === 'video').map((x) => ((Store.state.creatives[x] || {}).edit || {}).segs).filter(Boolean).map((sg) => sg[0]);
+      if (same.some((sg) => sg[0] === r.segs[0][0] && sg[1] === r.segs[0][1]) && /b$/.test(k)) r.segs = [pick(sources()[code], r.segs[0][1] - r.segs[0][0], same)]; r.cues = cuesFor(code, r.segs[0][0], r.segs[0][1]); return r; }, '자막 넣은 영상');
     return false;
   };
 
@@ -451,6 +534,7 @@
         : '<label class="mf"><span>쓸 장면 (원본의 몇 초) <output data-x="startv"></output></span><input type="range" data-f="at" min="0" max="' + Math.max(0, r1(m.dur - 0.2)) + '" step="0.1" value="' + (r.at || 0) + '"></label>') +
       '<label class="mf"><span>화면 맞춤</span><select data-f="fit"><option value="auto">자동</option><option value="cover">꽉 채우기 (잘림)</option><option value="blur">흐린 배경에 전체 넣기</option></select></label>' +
       '<label class="mf"><span>화면 위치</span><input type="range" data-f="pos" min="0" max="100" step="1" value="' + (r.pos == null ? 50 : r.pos) + '"></label>' +
+      (isVid ? '<label class="check"><input type="checkbox" data-f="subsOn"' + (r.subsOn !== false ? ' checked' : '') + '><span class="t">원본 자막 넣기</span></label><div class="cues" data-x="cues"></div>' : '') +
       fld('장르 줄', 'genre', r.genre) + fld('제목', 'title', r.title) +
       (isVid ? fld('첫 3초 자막 (비우면 없음)', 'sub', r.sub, ' placeholder="예: 결혼식 날, 신랑이 사라졌다"') : '') +
       fld('끝 화면 한 줄 (비우면 없음)', 'hook', r.hook, ' placeholder="예: 보낸 지 6분. 지울 수 없다."') +
@@ -460,6 +544,17 @@
     const cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
     const q = (s) => box.querySelector(s);
     q('[data-f=fit]').value = r.fit || 'auto';
+    const ownSrc = r.src === 'src|' + code;
+    if (isVid && !r.cues) r.cues = ownSrc ? cuesFor(code, r.segs[0][0], r.segs[0][1]) : [];
+    // 이 구간에 나오는 자막 줄을 보여 주고 글자를 고칠 수 있게 한다.
+    const listCues = () => {
+      const el = q('[data-x=cues]');
+      if (!el) return;
+      el.innerHTML = !subsOf(code) && ownSrc ? '<p class="small muted">자막 파일이 없습니다. 소재 화면의 「자막 파일(.srt) 넣기」로 넣으면 영상에 들어갑니다.</p>'
+        : !(r.cues || []).length ? '<p class="small muted">이 구간에는 자막이 없습니다.</p>'
+        : r.cues.map((c, i) => '<label class="cue"><span>' + Math.max(0, c[0] - r.segs[0][0]).toFixed(1) + '초</span><input type="text" data-cue="' + i + '" value="' + h(c[2]) + '"></label>').join('');
+    };
+    listCues();
     let t = isVid ? Math.max(0, L - 0.01) : 0, playing = false, busy = false, raf = 0;
     const srcT = (x) => (isVid ? r.segs[0][0] + x : (r.at || 0));
     const paint = () => draw(ctx, T, m, r, t, L, !isVid);
@@ -484,9 +579,11 @@
       const el = ev.target;
       if (busy) return;
       if (el.dataset.x === 'scrub') { stop(); t = +el.value; show(); return; }
+      if (el.dataset.cue) { const c = r.cues[+el.dataset.cue]; c[2] = el.value; if (!playing) { t = clamp(c[0] - r.segs[0][0] + 0.1, 0, L); show(); } return; }
       const f = el.dataset.f;
       if (!f) return;
-      if (f === 'start') { stop(); const a = r1(+el.value); r.segs = [[a, r1(a + L)]]; t = 0; show(); return; }
+      if (f === 'subsOn') { r.subsOn = el.checked; if (!playing) show(); return; }
+      if (f === 'start') { stop(); const a = r1(+el.value); r.segs = [[a, r1(a + L)]]; if (ownSrc) r.cues = cuesFor(code, a, a + L); listCues(); t = 0; show(); return; }
       if (f === 'at') { r.at = r1(+el.value); show(); return; }
       r[f] = f === 'pos' || f === 'end' ? +el.value : el.value;
       if (playing) return;
@@ -506,7 +603,7 @@
         if (!src || r.src !== 'src|' + code) { toast('직접 올린 파일은 자동으로 고를 장면 정보가 없습니다. 시작 위치를 직접 옮겨 주세요'); return; }
         r.tried = (r.tried || []).concat([r.segs[0]]);
         const seg = pick(src, L, r.tried);
-        r.segs = [seg]; q('[data-f=start]').value = seg[0]; t = 0; show();
+        r.segs = [seg]; r.cues = cuesFor(code, seg[0], seg[1]); listCues(); q('[data-f=start]').value = seg[0]; t = 0; show();
       }
       if (x === 'make') {
         stop(); busy = true;
@@ -525,5 +622,5 @@
   }
   Actions.makerOpen = (el) => { const b = window.UI.busy('편집기를 여는 중'); openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)).then(() => b.done()); return false; };
 
-  window.Maker = { sourceRow, setSource, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
+  window.Maker = { sourceRow, setSource, setSubs, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
 })();
