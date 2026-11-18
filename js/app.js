@@ -5,6 +5,7 @@
     checklist: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
     works: 'M4 5h16v14H4zM4 9h16M8 5v4M16 5v4',
     creatives: 'M4 5h16v14H4zM10 9l5 3-5 3z',
+    playbook: 'M6 4h12v16H6zM9 9l1.5 1.5L13 8M9 15l1.5 1.5L13 14M15 9h1M15 15h1',
     links: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     register: 'M12 4v11M7 10l5 5 5-5M5 20h14',
     budget: 'M4 7h16v11H4zM4 11h16M8 15h3',
@@ -18,6 +19,7 @@
     ['', '대시보드', 'dashboard', ''],
     ['checklist', '체크리스트', 'checklist', '준비'],
     ['works', '작품', 'works', '준비'],
+    ['playbook', '작품별 계획', 'playbook', '준비'],
     ['creatives', '소재', 'creatives', '준비'],
     ['links', '링크 태그', 'links', '준비'],
     ['register', '광고 등록', 'register', '준비'],
@@ -44,6 +46,7 @@
     return {
       checklist: [prog.d + '/' + prog.t, prog.d === prog.t ? 'ok' : ''],
       works: [s.works.length + '편', s.works.length >= 3 ? 'ok' : 'warn'],
+      playbook: (() => { const p = window.Playbook.progress(); return p.total ? [p.done + '/' + p.total, p.done === p.total ? 'ok' : ''] : null; })(),
       report: s.reports.length ? [s.reports.length + '줄', ''] : null,
       insights: flags ? ['끄기 ' + flags, 'bad'] : null,
     };

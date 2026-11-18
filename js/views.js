@@ -319,7 +319,8 @@
       '<p class="small muted" style="margin-top:8px">웹에서 조사한 자료다. 계정이 본인 것인지 직접 확인한 뒤 쓴다. 빈칸은 「없음」이 아니라 「확인 못 함」이다. 전체 목록은 원드라마_출연배우_팬채널.xlsx 에 있다.</p></div>' : '';
 
     return head('작품', '광고 후보 ' + cands.length + '편 (상용 등록, 청불 제외) 중 3~5편을 고른다. CP 홍보 허락 범위는 따로 확인한다.') +
-      '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml + '</div>' +
+      '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml +
+        (picked.length ? '<p style="margin:12px 0 0"><a class="btn primary" href="#/playbook">작품별 광고 방법과 체크리스트 보기 →</a></p>' : '') + '</div>' +
       castHtml +
       '<div class="card"><h2>CP 추천 작품 <span class="muted small">스튜디오지니 회신 11/17</span></h2><div class="tablewrap"><table><thead><tr><th>작품</th><th>CP</th><th>반응 좋았던 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
         '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>' +
