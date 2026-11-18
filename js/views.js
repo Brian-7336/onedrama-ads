@@ -67,7 +67,7 @@
 
   // 화면에만 쓰는 상태 (저장하지 않음)
   const ui = {
-    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false, fan: false },
+    works: { q: '', cp: '', genre: '', trailer: false, free3: false, rec: false, fan: false, new26: false, sort: '' },
     report: { tab: 'media', from: '', to: '', media: '' },
     form: { date: '', media: 'meta', work: '', creative: '', imp: '', clk: '', start: '', ep3: '', pay: '', cost: '' },
     links: { media: '' },
@@ -268,6 +268,16 @@
   const castLinks = (c) => [['instagram', '인스타'], ['x', 'X'], ['youtube', '유튜브'], ['tiktok', '틱톡'], ['fancafe', '팬카페']]
     .filter((k) => /^https?:\/\//.test(c[k[0]] || '')).map((k) => '<a href="' + h(c[k[0]].split(/\s/)[0]) + '" target="_blank" rel="noopener noreferrer">' + k[1] + '</a>').join(' · ');
   const CONF_KO = { high: '높음', medium: '보통', low: '낮음' };
+  // 출시일 (최초 공개일. 세로본능 작품은 원작 개봉·방영일)
+  const RELEASE = window.RELEASE || {};
+  const relOf = (title) => RELEASE[title] || null;
+  const isOrig = (r) => (r.k || '').indexOf('원작') === 0;
+  const relCell = (title) => {
+    const r = relOf(title);
+    if (!r) return '<span class="muted small">–</span>';
+    return '<span title="' + h((r.k || '최초 공개일') + (r.p ? ' · ' + r.p : '') + ' · 확신도 ' + (CONF_KO[r.c] || '–')) + '">' + h(r.d) + (isOrig(r) ? ' <span class="tag">원작</span>' : '') + (r.c === 'low' ? ' <span class="tag warn">불확실</span>' : '') + '</span>';
+  };
+  const isNew26 = (title) => { const r = relOf(title); return !!r && r.d.slice(0, 4) === '2026' && !isOrig(r); };
 
   Views.works = function () {
     const f = ui.works;
@@ -278,7 +288,8 @@
     const cps = [...new Set(cands.map((w) => w.cp))];
     const genres = [...new Set(cands.map((w) => w.genre))];
     const q = f.q.trim().toLowerCase();
-    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q) || castOf(w.title).some((c) => (c.name + ' ' + (c.group || '')).toLowerCase().includes(q))) && (!f.fan || hasFandom(w.title)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
+    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q) || castOf(w.title).some((c) => (c.name + ' ' + (c.group || '')).toLowerCase().includes(q))) && (!f.fan || hasFandom(w.title)) && (!f.new26 || isNew26(w.title)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
+    if (f.sort === 'new') list.sort((a, b) => ((relOf(b.title) || {}).d || '').localeCompare((relOf(a.title) || {}).d || ''));
     const full = picked.length >= 5;
     const recRows = Object.keys(P.recommended).map((title) => {
       const w = WORKS_DATA.find((x) => x.title === title) || {};
@@ -288,10 +299,10 @@
         (on ? '<span class="tag accent">고름</span>' : w.cand ? '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(title) + '"' + (full ? ' disabled' : '') + '>고르기</button>' : '<span class="small muted">공개 여부 확인 필요</span>') + '</td></tr>';
     }).join('');
 
-    const pickedHtml = picked.length ? '<div class="tablewrap"><table><thead><tr><th>코드</th><th>작품</th><th>CP</th><th class="num">회차</th><th class="num">무료</th><th>랜딩 주소 (작품 상세 페이지)</th><th></th></tr></thead><tbody>' +
+    const pickedHtml = picked.length ? '<div class="tablewrap"><table><thead><tr><th>코드</th><th>작품</th><th>CP</th><th>출시일</th><th class="num">회차</th><th class="num">무료</th><th>랜딩 주소 (작품 상세 페이지)</th><th></th></tr></thead><tbody>' +
       picked.map((w) => {
         const d = WORKS_DATA.find((x) => x.title === w.title && x.cp === w.cp) || {};
-        return '<tr><td><code>' + h(w.code) + '</code></td><td>' + h(w.title) + (dupTitles.has(w.title) ? ' <span class="tag warn" title="다른 CP에도 같은 제목이 있습니다. 권리 확인 필요">제목 중복</span>' : '') + '</td><td>' + h(w.cp) + '</td><td class="num">' + n(d.eps) + '</td><td class="num">' + (d.free == null ? '<span class="tag warn">미정</span>' : d.free + ((d.free || 0) < 3 ? ' <span class="tag warn" title="3화 시청이 곧 결제입니다">3화 유료</span>' : '')) + '</td>' +
+        return '<tr><td><code>' + h(w.code) + '</code></td><td>' + h(w.title) + (dupTitles.has(w.title) ? ' <span class="tag warn" title="다른 CP에도 같은 제목이 있습니다. 권리 확인 필요">제목 중복</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + relCell(w.title) + '</td><td class="num">' + n(d.eps) + '</td><td class="num">' + (d.free == null ? '<span class="tag warn">미정</span>' : d.free + ((d.free || 0) < 3 ? ' <span class="tag warn" title="3화 시청이 곧 결제입니다">3화 유료</span>' : '')) + '</td>' +
           '<td><input type="url" style="width:100%;min-width:260px" placeholder="' + P.site + '/..." value="' + h(w.url || '') + '" data-chg="setWorkUrl" data-code="' + h(w.code) + '" aria-label="' + h(w.title) + ' 랜딩 주소"></td>' +
           '<td><button class="ghost sm" data-act="unpickWork" data-code="' + h(w.code) + '">빼기</button></td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="empty">아직 고른 작품이 없습니다. 아래 목록에서 3~5편을 골라 주세요.</div>';
@@ -314,13 +325,15 @@
           '<label><input type="checkbox" data-chg="filterWorks" data-key="trailer"' + (f.trailer ? ' checked' : '') + '> 예고편 있음</label>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="free3"' + (f.free3 ? ' checked' : '') + '> 무료 3화 이상</label>' +
           '<label><input type="checkbox" data-chg="filterWorks" data-key="rec"' + (f.rec ? ' checked' : '') + '> CP 추천</label>' +
-          '<label><input type="checkbox" data-chg="filterWorks" data-key="fan"' + (f.fan ? ' checked' : '') + '> 팬덤 있는 출연자</label></div>' +
-        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th>출연</th><th></th></tr></thead><tbody>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="fan"' + (f.fan ? ' checked' : '') + '> 팬덤 있는 출연자</label>' +
+          '<label><input type="checkbox" data-chg="filterWorks" data-key="new26"' + (f.new26 ? ' checked' : '') + '> 2026년 신작</label>' +
+          '<select data-chg="filterWorks" data-key="sort" aria-label="정렬">' + opt('', '목록 순서', f.sort) + opt('new', '출시일 최신순', f.sort) + '</select></div>' +
+        '<div class="tablewrap" style="max-height:520px;overflow-y:auto"><table><thead style="position:sticky;top:0"><tr><th>작품</th><th>CP</th><th>장르</th><th>등급</th><th class="num">회차</th><th class="num">무료</th><th>예고편</th><th>출시일</th><th>출연</th><th></th></tr></thead><tbody>' +
           (list.length ? list.map((w) => {
             const on = pickedTitles.has(w.cp + '|' + w.title);
-            return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td><td class="wrap" style="min-width:200px">' + (castNames(w.title) || '<span class="muted small">–</span>') + '</td>' +
+            return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td><td>' + relCell(w.title) + '</td><td class="wrap" style="min-width:200px">' + (castNames(w.title) || '<span class="muted small">–</span>') + '</td>' +
               '<td class="num">' + (on ? '<span class="tag accent">고름</span>' : '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(w.title) + '"' + (full ? ' disabled title="5편까지 고를 수 있습니다"' : '') + '>고르기</button>') + '</td></tr>';
-          }).join('') : '<tr><td colspan="9" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
+          }).join('') : '<tr><td colspan="10" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
         '</tbody></table></div></div>';
   };
   Actions.filterWorks = (el) => { ui.works[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value; };

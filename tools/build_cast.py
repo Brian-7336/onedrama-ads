@@ -34,6 +34,13 @@ for x in load('r2_result_*.json'):       # 2차 조사는 찾은 경우에만 �
         works[x['title']] = x
 rows = [works[t] for t in order]
 
+# 출시일 조사 결과 (작품명 → 날짜)
+dates = {x['title']: x for x in load('date_result_*.json') if x.get('release_date')}
+
+
+def rel(t, k):
+    return (dates.get(t) or {}).get(k, '')
+
 
 def fan(c):
     return ' / '.join(v for v in [c.get('fanclub'), c.get('fancafe'), c.get('other_fan_channels')] if v)
@@ -65,12 +72,12 @@ def sheet(ws, header, data, widths):
 
 ws = wb.active
 ws.title = '작품별 요약'
-sheet(ws, ['CP', '작품', '배우 확인', '작품 확신도', '출연 배우', '팬덤 있는 출연자 (그룹)', '비고', '근거'],
-      [[x['cp'], x['title'], 'O' if ok(x) else '', CONF.get(x.get('work_confidence'), '') if ok(x) else '',
+sheet(ws, ['CP', '작품', '출시일', '출시일 구분', '공개 플랫폼', '출시일 확신도', '배우 확인', '작품 확신도', '출연 배우', '팬덤 있는 출연자 (그룹)', '비고', '근거'],
+      [[x['cp'], x['title'], rel(x['title'], 'release_date'), rel(x['title'], 'kind'), rel(x['title'], 'platform'), CONF.get(rel(x['title'], 'confidence'), ''), 'O' if ok(x) else '', CONF.get(x.get('work_confidence'), '') if ok(x) else '',
         ', '.join(c['name'] for c in x.get('cast', [])),
         ', '.join(c['name'] + ' (' + c['group'] + ')' for c in x.get('cast', []) if c.get('group')),
         x.get('note', ''), '\n'.join(x.get('work_sources', [])[:3])] for x in rows],
-      [14, 30, 9, 11, 40, 40, 60, 50])
+      [14, 30, 12, 16, 22, 10, 9, 11, 40, 40, 60, 50])
 
 ws = wb.create_sheet('배우별 상세')
 sheet(ws, ['CP', '작품', '배우', '구분', '배역', '그룹', '소속사', '인스타그램', 'X', '유튜브', '틱톡',
@@ -89,12 +96,20 @@ sheet(ws, ['CP', '작품', '배우', '그룹', '팬클럽', '팬카페', '그 �
        for x in rows for c in x.get('cast', []) if c.get('group') or fan(c)],
       [14, 28, 16, 28, 18, 36, 40, 36, 30, 8])
 
+ws = wb.create_sheet('출시일')
+sheet(ws, ['CP', '작품', '출시일', '구분', '공개 플랫폼', '확신도', '비고', '근거'],
+      sorted([[x['cp'], x['title'], rel(x['title'], 'release_date'), rel(x['title'], 'kind'), rel(x['title'], 'platform'),
+               CONF.get(rel(x['title'], 'confidence'), ''), rel(x['title'], 'note'), rel(x['title'], 'source')] for x in rows],
+             key=lambda r: r[2], reverse=True),
+      [14, 30, 12, 16, 24, 8, 70, 50])
+
 ws = wb.create_sheet('미확인 작품')
 sheet(ws, ['CP', '작품', '비고'], [[x['cp'], x['title'], x.get('note', '')] for x in rows if not ok(x)], [14, 34, 100])
 
 ws = wb.create_sheet('읽어보기')
 for line in [
     '광고 후보 129편의 출연 배우와 팬 채널을 웹에서 조사한 결과입니다. 사람이 하나씩 검증한 자료가 아닙니다.',
+    '출시일: 작품이 처음 공개된 날입니다(원드라마 등록일이 아님). 세로본능 작품은 원작 영화·드라마의 개봉·방영일입니다. 연도나 월까지만 확인된 것은 그만큼만 적었습니다.',
     '확신도: 높음 = 기사·공식 자료로 확인, 보통 = 이용자 편집 DB(TMDB, 나무위키) 한 곳에만 근거, 낮음 = 동명 작품·동명이인 가능성 있음.',
     '세로본능 작품은 기존 영화·드라마를 세로형으로 재편집한 것이라 원작 출연진을 적었습니다. 원작이 맞는지 앱에서 확인이 필요합니다.',
     'SNS 주소는 계정에 직접 들어가 본인 계정인지 확인하지 않았습니다. 광고나 협업에 쓰기 전에 확인하세요.',
@@ -114,6 +129,9 @@ data = {x['title']: {'conf': x.get('work_confidence', ''), 'note': x.get('note',
         for x in rows if ok(x)}
 with open(os.path.join(root, 'js', 'cast-data.js'), 'w', encoding='utf-8', newline='\n') as f:
     f.write('// tools/build_cast.py 가 만든 파일. 직접 고치지 않는다.\nwindow.CAST = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
+    rdata = {t: {'d': v['release_date'], 'k': v.get('kind', ''), 'p': v.get('platform', ''), 'c': v.get('confidence', '')} for t, v in dates.items() if t in works}
+    f.write('window.RELEASE = ' + json.dumps(rdata, ensure_ascii=False, separators=(',', ':')) + ';\n')
+print('date', sum(1 for t in order if t in dates))
 
 cast = [c for x in rows for c in x.get('cast', [])]
 print('작품', len(rows), '배우 확인', sum(ok(x) for x in rows), '배우', len(cast),
