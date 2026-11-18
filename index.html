@@ -4,12 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light dark">
   <title>원드라마 광고 집행 관리</title>
+  <script>
+    // 저장된 화면 모드를 첫 그리기 전에 적용한다 (깜빡임 방지).
+    try { var t = localStorage.getItem('onedrama-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <a class="skip" href="#view">본문으로 건너뛰기</a>
+  <header class="topbar">
+    <button id="menuBtn" class="icon-btn" aria-label="메뉴 열기" aria-expanded="false" aria-controls="side">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="brand" href="#/"><span class="brand-mark">원</span><strong>원드라마 광고</strong></a>
+    <span id="topTitle" class="top-title"></span>
+  </header>
   <div class="app">
-    <aside class="side">
+    <aside id="side" class="side">
       <a class="brand" href="#/">
         <span class="brand-mark">원</span>
         <span>
@@ -17,12 +30,14 @@
           <small>12월 광고 집행</small>
         </span>
       </a>
-      <nav id="nav" class="nav"></nav>
+      <div id="phaseChip" class="phase-chip"></div>
+      <nav id="nav" class="nav" aria-label="주 메뉴"></nav>
       <div class="side-foot">
-        <div id="saveState" class="save-state">이 브라우저에 저장됨</div>
-        <a href="#/data">데이터 내보내기·가져오기</a>
+        <div id="saveState" class="save-state" aria-live="polite">이 브라우저에 저장됨</div>
+        <button id="themeBtn" class="link-btn" type="button">화면 모드: 자동</button>
       </div>
     </aside>
+    <div id="scrim" class="scrim" hidden></div>
     <main id="view" class="main" tabindex="-1"></main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

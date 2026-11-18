@@ -329,5 +329,12 @@
     return false;
   };
 
-  window.Register = { buildCsv, fileRows, problems, FILES };
+  function progress() {
+    const ph = phaseId();
+    const keys = P.media.flatMap((m) => (m.search ? searchGroups(m, ph) : adRows(m, ph)).map((x) => x.key));
+    const st = (S().settings.reg || {}).status || {};
+    return { total: keys.length, done: keys.filter((k) => st[k] && st[k] !== '반려').length };
+  }
+
+  window.Register = { buildCsv, fileRows, problems, progress, FILES };
 })();

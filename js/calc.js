@@ -118,6 +118,24 @@
       });
     },
 
+    // 준비 단계. 대시보드에서 「지금 할 일」을 알려 주는 데 쓴다.
+    setupSteps() {
+      const st = Store.state;
+      const works = st.works;
+      const keys = works.flatMap((w) => Calc.creativeIds(w.code).map((id) => w.code + '_' + id));
+      const ready = keys.filter((k) => ['검수 중', '집행 중', '꺼짐'].includes((st.creatives[k] || {}).status)).length;
+      const withUrl = works.filter((w) => w.url).length;
+      const reg = window.Register ? window.Register.progress() : { done: 0, total: 0 };
+      return [
+        { t: '작품 3~5편 고르기', href: '#/works', done: works.length >= 3, hint: works.length + '편 고름', cta: '작품 고르기', why: 'CP 추천 3편은 표에서 바로 고를 수 있습니다.' },
+        { t: '랜딩 주소 넣기', href: '#/works', done: works.length > 0 && withUrl === works.length, hint: withUrl + '/' + works.length + '편', cta: '주소 넣기', why: '작품 상세 페이지 주소가 있어야 광고 링크가 만들어집니다.' },
+        { t: '소재 받고 검수하기', href: '#/creatives', done: keys.length > 0 && ready === keys.length, hint: ready + '/' + keys.length + '종', cta: '소재 보기', why: '소재마다 상태와 내용을 정하고 검수 항목을 확인합니다.' },
+        { t: '링크 규칙 확정하기', href: '#/links', done: !!(st.checks.p06 && st.checks.p08), hint: '위키 표, 유튜브 medium', cta: '링크 태그 보기', why: '위키 표에 값을 추가하고 유튜브 medium을 정한 뒤 체크리스트에서 체크합니다.' },
+        { t: '매체에 광고 등록하기', href: '#/register', done: reg.total > 0 && reg.done === reg.total, hint: reg.done + '/' + reg.total + '건', cta: '광고 등록하기', why: '문구와 키워드를 채우고 등록 파일을 내려받아 매체에 올립니다.' },
+        { t: '성과 입력 시작하기', href: '#/report', done: st.reports.length > 0, hint: '12/2부터 매일', cta: '성과 입력하기', why: '전날 성과를 넣으면 분석과 추천이 만들어집니다.' },
+      ];
+    },
+
     // 바로가기: 계정 설정이 있으면 그 계정으로 열리게 주소를 만든다.
     // 비밀번호는 다루지 않는다. 로그인 자체는 각 사이트와 브라우저가 한다.
     accounts() { return Store.state.settings.accounts || {}; },

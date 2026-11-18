@@ -15,12 +15,26 @@
   const ext = (url, label, cls) => '<a class="btn ' + (cls || '') + '" href="' + h(url) + '" target="_blank" rel="noopener noreferrer">' + h(label) + ' ↗</a>';
   const opt = (value, label, cur) => '<option value="' + h(value) + '"' + (String(cur) === String(value) ? ' selected' : '') + '>' + h(label) + '</option>';
 
-  function toast(msg) {
+  // undo를 주면 「되돌리기」 버튼이 함께 뜬다.
+  function toast(msg, undo) {
     const el = document.getElementById('toast');
     el.textContent = msg;
+    if (undo) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '되돌리기';
+      b.onclick = () => { undo(); el.classList.remove('on'); };
+      el.appendChild(b);
+    }
     el.classList.add('on');
     clearTimeout(toast.t);
-    toast.t = setTimeout(() => el.classList.remove('on'), 1800);
+    toast.t = setTimeout(() => el.classList.remove('on'), undo ? 6000 : 1800);
+  }
+  // 지우기 전에 상태를 찍어 두고, 되돌리기를 누르면 그대로 돌려놓는다.
+  function withUndo(msg, change) {
+    const snap = JSON.stringify(Store.state);
+    Store.update(change);
+    toast(msg, () => { Store.replace(JSON.parse(snap)); window.App.render(true); });
   }
   function download(name, text, type) {
     const blob = new Blob(['﻿' + text], { type: (type || 'text/csv') + ';charset=utf-8' });
@@ -102,6 +116,13 @@
 
     const showPhase = phase || (today < P.start ? P.phases[0] : null);
 
+    // 준비 단계 안내: 끝나지 않은 첫 단계를 「지금 할 일」로 보여 준다.
+    const steps = Calc.setupSteps();
+    const curStep = steps.find((x) => !x.done);
+    const setupHtml = curStep ? '<div class="card"><h2>지금 할 일 <span class="muted small">' + steps.filter((x) => x.done).length + '/' + steps.length + ' 단계 완료</span></h2>' +
+      '<ol class="steps">' + steps.map((x) => '<li class="' + (x.done ? 'done' : x === curStep ? 'cur' : '') + '"' + (x === curStep ? ' aria-current="step"' : '') + '><a href="' + x.href + '">' + h(x.t) + '</a><br><span class="small muted">' + h(x.hint) + '</span></li>').join('') + '</ol>' +
+      '<div class="next"><div class="what"><strong>' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.why) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div></div>' : '';
+
     const timeline = Array.from({ length: 31 }, (_, i) => {
       const d = Calc.addDays(P.start, i);
       const ph = Calc.phaseOf(d);
@@ -111,6 +132,7 @@
     const todo = prog.flatMap((p) => p.items.filter((i) => !S().checks[i.id]).map((i) => ({ i, sec: p.sec }))).slice(0, 6);
 
     return head(P.title, '2026-12-01 ~ 12-31 · 판촉비 ' + won(P.budget) + ' (VAT 별도) · ' + P.team.map((t) => h(t.role) + ' ' + h(t.name)).join(', ')) +
+      setupHtml +
       alerts.map((a) => '<div class="notice ' + a[0] + '">' + a[1] + '</div>').join('') +
       '<div class="grid g4">' +
         '<div class="card stat"><div class="label">지금</div><div class="value">' + h(status) + '</div><div class="sub">' + h(statusSub) + '</div></div>' +
@@ -180,7 +202,7 @@
     if (!text) return false;
     Store.update((s) => s.customChecks.push({ id: 'c' + Store.uid(), section: form.dataset.section, text }));
   };
-  Actions.delCheck = (el) => Store.update((s) => {
+  Actions.delCheck = (el) => withUndo('항목을 지웠습니다', (s) => {
     s.customChecks = s.customChecks.filter((c) => c.id !== el.dataset.id);
     delete s.checks[el.dataset.id];
   });
@@ -295,9 +317,7 @@
   });
   Actions.unpickWork = (el) => {
     const code = el.dataset.code;
-    const has = S().reports.some((r) => r.work === code);
-    if (!confirm(code + ' 작품을 뺄까요?' + (has ? '\n이 작품의 성과 기록은 그대로 남습니다.' : ''))) return false;
-    Store.update((s) => { s.works = s.works.filter((w) => w.code !== code); });
+    withUndo(code + ' 작품을 뺐습니다', (s) => { s.works = s.works.filter((w) => w.code !== code); });
   };
   Actions.setWorkUrl = (el) => {
     const v = el.value.trim();
@@ -354,7 +374,7 @@
     if (Calc.creativeIds(code).includes(id)) { toast('이미 있는 번호입니다'); return false; }
     Store.update((s) => { (s.extraCreatives[code] = s.extraCreatives[code] || []).push(id); });
   };
-  Actions.delCreative = (el) => Store.update((s) => {
+  Actions.delCreative = (el) => withUndo('소재를 지웠습니다', (s) => {
     const code = el.dataset.code;
     s.extraCreatives[code] = (s.extraCreatives[code] || []).filter((x) => x !== el.dataset.id);
     delete s.creatives[code + '_' + el.dataset.id];
@@ -425,7 +445,7 @@
     if (!cOpts.some((o) => o[0] === f.creative)) f.creative = cOpts[0] ? cOpts[0][0] : '';
     const works = S().works;
     const needWork = !m.search || f.creative === 'title';
-    const numField = (key, label) => '<label class="field">' + label + '<input type="number" min="0" step="1" value="' + h(f[key]) + '" data-inp="formField" data-key="' + key + '"></label>';
+    const numField = (key, label) => '<label class="field">' + label + '<input type="number" inputmode="numeric" id="f_' + key + '" min="0" step="1" value="' + h(f[key]) + '" data-inp="formField" data-key="' + key + '"></label>';
 
     const rows = S().reports.filter((x) => (!r.from || x.date >= r.from) && (!r.to || x.date <= r.to) && (!r.media || x.media === r.media));
     const total = Calc.sum(rows);
@@ -465,7 +485,7 @@
         '<details style="margin-top:12px"><summary class="small muted" style="cursor:pointer">여러 줄 한꺼번에 붙여 넣기 (CSV)</summary><p class="small muted" style="margin-top:8px">한 줄에 <code>날짜,매체,작품코드,소재,집행액,노출,클릭,첫재생,3화시청,결제</code> 순서. 매체는 meta, youtube, naver, gsearch, gdn. 엑셀에서 복사한 탭 구분도 된다.</p>' +
         '<form data-submit="importCsv"><textarea name="csv" rows="4" style="width:100%" placeholder="2026-12-01,meta,w01,v15a,22000,5200,140,96,31,2" aria-label="CSV 붙여 넣기"></textarea><div style="margin-top:6px"><button>붙여 넣은 줄 추가</button></div></form></details></div>' +
       '<div class="card"><div class="filters">' +
-        tabs.map((t) => '<button class="' + (r.tab === t[0] ? 'primary' : '') + '" data-act="reportTab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') +
+        '<div class="seg" role="tablist" aria-label="집계 기준">' + tabs.map((t) => '<button role="tab" aria-selected="' + (r.tab === t[0]) + '" class="' + (r.tab === t[0] ? 'on' : '') + '" data-act="reportTab" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' +
         '<span style="flex:1"></span>' +
         '<input type="date" value="' + h(r.from) + '" data-chg="reportFilter" data-key="from" aria-label="시작일"> ~ <input type="date" value="' + h(r.to) + '" data-chg="reportFilter" data-key="to" aria-label="종료일">' +
         '<select data-chg="reportFilter" data-key="media" aria-label="매체">' + opt('', '매체 전체', r.media) + P.media.map((mm) => opt(mm.id, mm.name, r.media)).join('') + '</select></div>' +
@@ -489,6 +509,7 @@
     Store.update((s) => s.reports.push({ id: Store.uid(), date: f.date, media: f.media, work, creative: f.creative, imp: num('imp'), clk: num('clk'), start: num('start'), ep3: num('ep3'), pay: num('pay'), cost: num('cost') }));
     ['imp', 'clk', 'start', 'ep3', 'pay', 'cost'].forEach((k) => { f[k] = ''; });
     toast('기록을 추가했습니다');
+    setTimeout(() => { const el = document.getElementById('f_cost'); if (el) el.focus(); }, 0);
   };
   Actions.importCsv = (form) => {
     const lines = form.elements.csv.value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -506,7 +527,7 @@
     Store.update((s) => { s.reports = s.reports.concat(add); });
     toast(add.length + '줄 추가' + (bad.length ? ', ' + bad.length + '줄 건너뜀 (' + bad.join(', ') + '번째)' : ''));
   };
-  Actions.delReport = (el) => Store.update((s) => { s.reports = s.reports.filter((x) => x.id !== el.dataset.id); });
+  Actions.delReport = (el) => withUndo('기록을 지웠습니다', (s) => { s.reports = s.reports.filter((x) => x.id !== el.dataset.id); });
   Actions.csvReport = () => {
     const rows = [['날짜', '시기', '매체', '작품코드', '소재', 'content', '집행액', '노출', '클릭', '첫재생', '3화시청', '결제']]
       .concat(S().reports.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((x) => [x.date, (Calc.phaseOf(x.date) || {}).name || '', Calc.media(x.media).name, x.work, x.creative, Calc.contentOf(x), x.cost, x.imp, x.clk, x.start, x.ep3, x.pay]));
