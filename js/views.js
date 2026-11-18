@@ -124,13 +124,15 @@
         '<div class="card stat"><div class="label">결제</div><div class="value">' + n(total.pay) + '</div><div class="sub">첫 재생의 ' + pct(total.payRate, 2) + '</div></div>' +
         '<div class="card stat"><div class="label">결제당 비용</div><div class="value">' + won(total.cpp) + '</div><div class="sub">매체를 끌 때 함께 본다</div></div>' +
       '</div>' +
-      '<div class="card"><h2>바로가기</h2><h3 style="margin-top:0">광고 등록·관리</h3><div class="actions">' + P.media.map((m) => '<a class="btn" href="' + h(m.ad.url) + '" target="_blank" rel="noopener noreferrer">' + dot(m) + h(m.name) + ' <span class="muted small">' + h(m.ad.name) + '</span> ↗</a>').join('') + '</div>' +
-        '<h3>측정·확인</h3><div class="actions">' + P.tools.map((t) => ext(t.url, t.name)).join('') + '</div></div>' +
+      '<div class="card"><h2>바로가기 <a class="small" href="#/data" style="font-weight:400">계정 설정</a></h2>' +
+        (Object.values(Calc.accounts()).some(Boolean) ? '' : '<div class="notice info">계정을 설정하면 바로가기가 원드라마 계정으로 열립니다. <a href="#/data">계정 설정</a></div>') +
+        '<h3 style="margin-top:0">광고 등록·관리</h3><div class="actions">' + P.media.map((m) => '<a class="btn" href="' + h(Calc.adUrl(m)) + '" target="_blank" rel="noopener noreferrer" title="' + h(Calc.adAccount(m) || '계정 미설정') + '">' + dot(m) + h(m.name) + ' <span class="muted small">' + h(Calc.adAccount(m) || m.ad.name) + '</span> ↗</a>').join('') + '</div>' +
+        '<h3>측정·확인</h3><div class="actions">' + P.tools.map((t) => ext(Calc.toolUrl(t), t.name)).join('') + '</div></div>' +
       '<div class="card"><h2>12월 일정</h2><div class="timeline">' + timeline + '</div>' +
         '<div class="small muted">' + P.phases.map((ph) => h(ph.name) + ' ' + md(ph.start) + '~' + md(ph.end) + ' (' + pct(ph.share, 0) + ')').join(' · ') + '</div></div>' +
       '<div class="grid g2">' +
         '<div class="card"><h2>' + (showPhase ? h(showPhase.name) + ' 기간 하루 예산' : '하루 예산') + '</h2>' +
-          (showPhase ? '<table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="num">' + won(Calc.daily(m.id, showPhase.id)) + '</td><td class="num">' + ext(m.ad.url, m.ad.name, 'sm') + '</td></tr>').join('') +
+          (showPhase ? '<table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="num">' + won(Calc.daily(m.id, showPhase.id)) + '</td><td class="num">' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</td></tr>').join('') +
             '<tr class="total"><td>합계</td><td class="num">' + won(P.media.reduce((s, m) => s + Calc.daily(m.id, showPhase.id), 0)) + '</td><td></td></tr></tbody></table>' : '<div class="empty">집행이 끝났습니다</div>') +
         '</div>' +
         '<div class="card"><h2>체크리스트</h2>' +
@@ -224,7 +226,7 @@
         '<tr class="total"><td>합계</td><td class="num">' + won(P.budget) + '</td><td class="num">100%</td><td class="num">' + won(Calc.plannedUntil(today)) + '</td><td class="num">' + won(tot.cost) + '</td><td>' + bar(tot.cost / P.budget) + '</td><td class="num">' + won(P.budget - tot.cost) + '</td></tr></tbody></table></div></div>' +
       '<div class="card"><h2>시기별 계획과 집행</h2><div class="tablewrap"><table><thead><tr><th>시기</th><th class="num">계획</th><th class="num">집행액</th><th>계획 대비</th><th class="num">첫 재생</th><th class="num">첫 재생당</th></tr></thead><tbody>' + byPhase + '</tbody></table></div></div>' +
       '<div class="card"><h2>매체 구성</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>상품</th><th>목적</th><th>타깃</th><th>과금</th><th>원드라마 계정</th><th>광고 등록</th></tr></thead><tbody>' +
-        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td><td>' + (m.accounts ? m.accounts.map(h).join('<br>') : '<span class="muted">계정 없이 집행</span>') + '</td><td>' + ext(m.ad.url, m.ad.name, 'sm') + '</td></tr>').join('') + '</tbody></table></div><p class="small muted" style="margin-top:8px">메타와 유튜브 광고는 원드라마 계정 이름으로 나간다. 검색과 디스플레이는 연결할 SNS 계정이 없다. X(@ONEstoreDrama)는 광고 매체가 아니라 공식 계정 공유에만 쓴다.</p></div>';
+        P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td class="wrap">' + h(m.product) + '</td><td>' + h(m.goal) + '</td><td class="wrap">' + h(m.target) + '</td><td>' + h(m.billing) + '</td><td>' + (m.accounts ? m.accounts.map(h).join('<br>') : '<span class="muted">계정 없이 집행</span>') + '</td><td>' + ext(Calc.adUrl(m), m.ad.name, 'sm') + '</td></tr>').join('') + '</tbody></table></div><p class="small muted" style="margin-top:8px">메타와 유튜브 광고는 원드라마 계정 이름으로 나간다. 검색과 디스플레이는 연결할 SNS 계정이 없다. X(@ONEstoreDrama)는 광고 매체가 아니라 공식 계정 공유에만 쓴다.</p></div>';
   };
   Actions.setDaily = (el) => Store.update((s) => {
     const v = Math.max(0, Math.round(+el.value || 0));
@@ -458,7 +460,7 @@
         '<label class="field">' + (m.search ? '키워드 묶음' : '소재') + '<select data-chg="formSelect" data-key="creative">' + cOpts.map((o) => opt(o[0], o[1], f.creative)).join('') + '</select></label>' +
         numField('cost', '집행액(원)') + numField('imp', '노출') + numField('clk', '클릭') + numField('start', '첫 재생') + numField('ep3', '3화 시청') + numField('pay', '결제') +
         '<button class="primary">기록 추가</button></div></form>' +
-        '<div class="actions" style="margin-top:12px"><span class="small muted">숫자 가져올 곳</span>' + ext(m.ad.url, m.name + ' · ' + m.ad.name, 'sm') + ext(P.tools[0].url, 'GA4', 'sm') + '</div>' +
+        '<div class="actions" style="margin-top:12px"><span class="small muted">숫자 가져올 곳</span>' + ext(Calc.adUrl(m), m.name + ' · ' + m.ad.name, 'sm') + ext(Calc.toolUrl(P.tools[0]), 'GA4', 'sm') + '</div>' +
         '<details style="margin-top:12px"><summary class="small muted" style="cursor:pointer">여러 줄 한꺼번에 붙여 넣기 (CSV)</summary><p class="small muted" style="margin-top:8px">한 줄에 <code>날짜,매체,작품코드,소재,집행액,노출,클릭,첫재생,3화시청,결제</code> 순서. 매체는 meta, youtube, naver, gsearch, gdn. 엑셀에서 복사한 탭 구분도 된다.</p>' +
         '<form data-submit="importCsv"><textarea name="csv" rows="4" style="width:100%" placeholder="2026-12-01,meta,w01,v15a,22000,5200,140,96,31,2" aria-label="CSV 붙여 넣기"></textarea><div style="margin-top:6px"><button>붙여 넣은 줄 추가</button></div></form></details></div>' +
       '<div class="card"><div class="filters">' +
@@ -532,12 +534,30 @@
     return head('데이터', '모든 내용은 이 브라우저에만 저장된다. 다른 사람과 나누거나 다른 컴퓨터로 옮기려면 파일로 내보낸다.') +
       '<div class="card"><h2>지금 저장된 내용</h2>' +
         '<dl class="kv"><dt>체크한 항목</dt><dd>' + Object.keys(s.checks).length + '개</dd><dt>고른 작품</dt><dd>' + s.works.length + '편</dd><dt>성과 기록</dt><dd>' + s.reports.length + '줄</dd></dl></div>' +
+      '<div class="card"><h2>바로가기 계정</h2><p class="small muted">여기에 넣은 계정으로 바로가기가 열린다. 이 브라우저에만 저장되고 GitHub에는 올라가지 않는다. 비밀번호는 넣지 않는다. 로그인은 각 사이트에서 하고, 비밀번호는 브라우저의 비밀번호 저장 기능에 맡긴다.</p>' +
+        '<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">' +
+        [['googleEmail', '구글 로그인 이메일 (구글 애즈, GA4)', 'email', 'name@example.com'], ['ga4Prop', 'GA4 속성 ID (숫자)', 'text', '123456789'], ['metaAct', '메타 광고 계정 ID (숫자)', 'text', '1234567890'], ['metaBiz', '메타 비즈니스 ID (숫자, 선택)', 'text', ''], ['naverId', '네이버 광고 로그인 아이디 (표시용)', 'text', '']]
+          .map((f) => '<label class="field">' + f[1] + '<input type="' + f[2] + '" value="' + h(Calc.accounts()[f[0]] || '') + '" placeholder="' + f[3] + '" data-chg="setAccount" data-key="' + f[0] + '" autocomplete="off"></label>').join('') + '</div>' +
+        '<h3>지금 연결되는 주소</h3><div class="tablewrap"><table><tbody>' + P.media.map((m) => '<tr><td>' + dot(m) + h(m.name) + '</td><td>' + (Calc.adAccount(m) ? h(Calc.adAccount(m)) : '<span class="tag warn">계정 미설정</span>') + '</td><td class="linkcell mono">' + h(Calc.adUrl(m)) + '</td></tr>').join('') +
+          '<tr><td>GA4</td><td>' + (Calc.accounts().googleEmail ? h(Calc.accounts().googleEmail) : '<span class="tag warn">계정 미설정</span>') + '</td><td class="linkcell mono">' + h(Calc.toolUrl(P.tools[0])) + '</td></tr></tbody></table></div>' +
+        '<p class="small muted" style="margin-top:8px">구글은 그 이메일로 로그인되어 있으면 바로 열리고, 아니면 이메일이 채워진 로그인 화면이 뜬다. 메타는 지정한 광고 계정이 선택된 채로 열린다(로그인은 권한 있는 개인 페이스북 계정). 네이버는 주소로 계정을 지정할 수 없어 아이디만 버튼에 보여 준다.</p></div>' +
       '<div class="card"><h2>내보내기·가져오기</h2><div class="actions">' +
         '<button class="primary" data-act="exportJson">백업 파일 내려받기</button>' +
         '<label class="btn">백업 파일 가져오기<input type="file" accept="application/json,.json" data-chg="importJson" hidden></label></div>' +
         '<p class="small muted" style="margin-top:10px">가져오면 지금 내용을 덮어쓴다.</p></div>' +
       '<div class="card"><h2>연습용</h2><div class="actions"><button data-act="loadSample">예시 데이터 넣기</button><button data-act="resetAll">전부 지우기</button></div>' +
         '<p class="small muted" style="margin-top:10px">예시 데이터는 작품 3편과 12/1~5 가상 성과를 넣는다. 지금 내용을 덮어쓴다.</p></div>';
+  };
+  Actions.setAccount = (el) => {
+    const key = el.dataset.key;
+    let v = el.value.trim();
+    if (key === 'googleEmail' && v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast('이메일 형식이 아닙니다'); return; }
+    if (['ga4Prop', 'metaAct', 'metaBiz'].includes(key)) {
+      v = v.replace(/^act_/, '');
+      if (v && !/^\d+$/.test(v)) { toast('숫자만 넣어 주세요'); return; }
+    }
+    Store.update((s) => { s.settings.accounts = s.settings.accounts || {}; if (v) s.settings.accounts[key] = v; else delete s.settings.accounts[key]; });
+    toast('저장했습니다');
   };
   Actions.exportJson = () => { download('원드라마_광고집행_백업_' + Calc.today() + '.json', JSON.stringify(S(), null, 2), 'application/json'); return false; };
   Actions.importJson = (el) => {
@@ -580,7 +600,7 @@
         });
       });
     }
-    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives: {}, extraCreatives: {}, reports, settings: { ytMedium: 'paid_social', daily: {} } });
+    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives: {}, extraCreatives: {}, reports, settings: { ytMedium: 'paid_social', daily: {}, accounts: Calc.accounts() } });
     toast('예시 데이터를 넣었습니다');
   };
 

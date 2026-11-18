@@ -11,7 +11,7 @@
       creatives: {},       // 'w01_v15a' → {status, qc: [bool], note}
       extraCreatives: {},  // 'w01' → ['v15c', ...] (주간 교체로 추가한 소재)
       reports: [],         // [{id, date, media, work, creative, imp, clk, start, ep3, pay, cost}]
-      settings: { ytMedium: 'paid_social', daily: {} },
+      settings: { ytMedium: 'paid_social', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)
     };
   }
 

@@ -8,7 +8,7 @@ window.PLAN = {
   site: 'https://drama.onestore.co.kr',
   // 자주 여는 곳
   tools: [
-    { name: 'GA4', url: 'https://analytics.google.com/', note: '첫 재생, 3화 시청, 결제' },
+    { id: 'ga4', name: 'GA4', url: 'https://analytics.google.com/analytics/web/', note: '첫 재생, 3화 시청, 결제' },
     { name: '원드라마', url: 'https://drama.onestore.co.kr', note: '랜딩 확인' },
     { name: '인스타그램 @onestoredrama', url: 'https://www.instagram.com/onestoredrama/', note: '원드라마 계정' },
     { name: '스레드 @onestoredrama', url: 'https://www.threads.net/@onestoredrama', note: '원드라마 계정' },

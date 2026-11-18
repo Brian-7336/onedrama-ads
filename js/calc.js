@@ -118,6 +118,31 @@
       });
     },
 
+    // 바로가기: 계정 설정이 있으면 그 계정으로 열리게 주소를 만든다.
+    // 비밀번호는 다루지 않는다. 로그인 자체는 각 사이트와 브라우저가 한다.
+    accounts() { return Store.state.settings.accounts || {}; },
+    googleUrl(url) {
+      const email = Calc.accounts().googleEmail;
+      return email ? 'https://accounts.google.com/AccountChooser?Email=' + encodeURIComponent(email) + '&continue=' + encodeURIComponent(url) : url;
+    },
+    adUrl(m) {
+      const a = Calc.accounts();
+      if (m.id === 'meta') return m.ad.url + (a.metaAct ? '?act=' + a.metaAct + (a.metaBiz ? '&business_id=' + a.metaBiz : '') : '');
+      if (m.id === 'naver') return m.ad.url;
+      return Calc.googleUrl(m.ad.url);
+    },
+    adAccount(m) {
+      const a = Calc.accounts();
+      if (m.id === 'meta') return a.metaAct ? '광고 계정 ' + a.metaAct : '';
+      if (m.id === 'naver') return a.naverId || '';
+      return a.googleEmail || '';
+    },
+    toolUrl(t) {
+      if (t.id !== 'ga4') return t.url;
+      const prop = Calc.accounts().ga4Prop;
+      return Calc.googleUrl(t.url + (prop ? '#/p' + prop + '/reports/intelligenthome' : ''));
+    },
+
     // utm 링크
     ytMedium() { return Store.state.settings.ytMedium || 'paid_social'; },
     mediumOf(m) { return m.id === 'youtube' ? Calc.ytMedium() : m.medium; },
