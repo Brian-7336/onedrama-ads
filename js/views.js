@@ -607,4 +607,5 @@
   window.Views = Views;
   window.Actions = Actions;
   window.toast = toast;
+  window.UI = { h, n, won, pct, md, bar, dot, head, opt, ext, toast, download, toCsv, copy };
 })();
