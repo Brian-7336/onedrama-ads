@@ -190,9 +190,10 @@
               P.creativeTypes.map((c) => '<span class="tag">' + h(c.name) + ' → ' + h(plan[c.id] || '–') + '</span>').join(' ') + '</p>' +
             '<h3>검색광고 키워드 <button class="link-btn" data-act="pbCopyKw" data-code="' + h(w.code) + '">복사</button></h3><p class="small" style="line-height:1.9;margin:0">' + kws.map((k) => '<span class="tag">' + h(k) + '</span>').join(' ') + '</p>' +
             (p.fans.length ? '<h3>공유를 부탁할 계정</h3><table class="inner"><tbody>' + p.fans.map((c) => '<tr><td>' + h(c.name) + '</td><td class="wrap">' + h(c.group || '') + (c.fanclub ? '<br><span class="small muted">팬클럽 ' + h(c.fanclub) + '</span>' : '') + '</td><td class="wrap">' + (chips(c) || '<span class="muted small">확인 못 함</span>') + '</td></tr>').join('') + '</tbody></table>' : '') +
-            (() => { const pl = portraitLines(w); const pv = (window.PRIVATE || {})[w.title] || {};
+            (() => { const pl = portraitLines(w); const pv = (window.WORKMETA || {})[w.title] || {};
               return (pl.length ? '<h3>초상권 (CP 메타)</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + pl.map((x) => '<li>' + (x.warn ? '<span class="tag warn">확인 필요</span> ' : '<span class="tag ok">사용 가능 문구</span> ') + h(x.text) + ' <span class="muted">(' + h(x.names.join(', ')) + ')</span></li>').join('') + '</ul>' : '') +
-                (pv.marketing ? '<h3>CP가 적은 마케팅 포인트</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.marketing) + '</p>' : ''); })() +
+                (pv.marketing ? '<h3>CP가 적은 마케팅 포인트</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.marketing) + '</p>' : '') +
+                (pv.logline ? '<h3>로그라인</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.logline) + '</p>' : ''); })() +
             '<h3>집행 전에 확인</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + cautions(w, p).map((c) => '<li>' + h(c) + '</li>').join('') + '</ul>' +
           '</div>' +
         '</div></div>';

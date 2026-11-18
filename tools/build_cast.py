@@ -274,15 +274,21 @@ with open(os.path.join(root, 'js', 'cast-data.js'), 'w', encoding='utf-8', newli
     rdata = {t: {'d': v['release_date'], 'k': v.get('kind', ''), 'p': v.get('platform', ''), 'c': v.get('confidence', '')} for t, v in dates.items() if t in works}
     f.write('window.RELEASE = ' + json.dumps(rdata, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print('date', sum(1 for t in order if t in dates), 'from meta', sum(1 for t in order if (dates.get(t) or {}).get('source', '').startswith('CP')))
-# 초상권 계약 정보와 마케팅 포인트는 CP가 준 사내 자료다. 레포에 올리지 않는 파일(js/private-data.js)에 따로 둔다.
+# 마케팅 포인트·로그라인·제작사는 팀이 같이 봐야 해서 사이트 데이터(js/cast-data.js)에 넣는다.
+wmeta = {x['title']: {k: v for k, v in {'marketing': x['meta'].get('marketing', ''), 'logline': x['meta'].get('logline', ''), 'producer': x['meta'].get('producer', ''), 'director': x['meta'].get('director', '')}.items() if v} for x in rows}
+wmeta = {t: v for t, v in wmeta.items() if v}
+with open(os.path.join(root, 'js', 'cast-data.js'), 'a', encoding='utf-8', newline='\n') as f:
+    f.write('window.WORKMETA = ' + json.dumps(wmeta, ensure_ascii=False, separators=(',', ':')) + ';\n')
+print('workmeta', len(wmeta), 'marketing', sum(1 for v in wmeta.values() if v.get('marketing')))
+# 초상권 계약 정보는 계약 내용이라 레포에 올리지 않는 파일(js/private-data.js)에 따로 둔다.
 priv = {}
 for x in rows:
     m = x['meta']
     pr = [[c['name'], c['portrait']] for c in x.get('cast', []) if c.get('portrait')]
-    if pr or m.get('marketing') or m.get('logline'):
-        priv[x['title']] = {'portrait': pr, 'marketing': m.get('marketing', ''), 'logline': m.get('logline', ''), 'producer': m.get('producer', '')}
+    if pr:
+        priv[x['title']] = {'portrait': pr}
 with open(os.path.join(root, 'js', 'private-data.js'), 'w', encoding='utf-8', newline='\n') as f:
-    f.write('// tools/build_cast.py 가 만든 파일. CP 납품 메타의 사내 자료라 레포에 올리지 않는다 (.gitignore).\nwindow.PRIVATE = ' + json.dumps(priv, ensure_ascii=False, separators=(',', ':')) + ';\n')
+    f.write('// tools/build_cast.py 가 만든 파일. 초상권 계약 정보. 레포에 올리지 않는다 (.gitignore).\nwindow.PRIVATE = ' + json.dumps(priv, ensure_ascii=False, separators=(',', ':')) + ';\n')
 print('private', len(priv))
 print('links', sum(len(links(c)) for x in rows for c in x.get('cast', [])), 'cast with links', sum(1 for x in rows for c in x.get('cast', []) if links(c)))
 
