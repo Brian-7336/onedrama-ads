@@ -377,3 +377,32 @@ ul.recs li:last-child { border-bottom: 0; }
 .statusrow .st.done { background: var(--ok-soft); border-color: transparent; }
 .statusrow .st.done .st-t { color: var(--ok); }
 @media (max-width: 900px) { .statusrow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 광고준비: 가로 진행 막대 */
+.pbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0 0 14px; padding: 14px 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.pb { position: relative; display: grid; justify-items: center; gap: 4px; padding: 0 6px; text-align: center; color: var(--muted); }
+.pb:hover { text-decoration: none; color: var(--ink); }
+/* 단계 사이를 잇는 선. 앞 단계가 끝났으면 색이 찬다. */
+.pb::before { content: ""; position: absolute; top: 10px; right: 50%; width: 100%; height: 3px; background: var(--line); border-radius: 2px; }
+.pb:first-child::before { display: none; }
+.pb.done + .pb::before { background: var(--ok); }
+.pb-dot { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--panel); border: 3px solid var(--line); color: var(--ok); box-sizing: border-box; }
+.pb.done .pb-dot { background: var(--ok); border-color: var(--ok); color: var(--panel); }
+.pb.cur .pb-dot { border-color: var(--accent); }
+.pb.on .pb-dot { box-shadow: 0 0 0 4px var(--accent-soft); }
+.pb.on:not(.done) .pb-dot { border-color: var(--accent); background: var(--accent); }
+.pb-t { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+.pb.on .pb-t { color: var(--accent); }
+.pb.done .pb-t { color: var(--ink); }
+.pb-h { font-size: 11.5px; line-height: 1.3; }
+.goal { margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
+.pager a.btn { min-height: 40px; padding: 8px 18px; font-weight: 600; }
+@media (max-width: 700px) {
+  .pbar { padding: 12px 2px 10px; }
+  .pb { padding: 0 2px; }
+  .pb-t { font-size: 11.5px; }
+  .pb-h { display: none; }
+  .pager a.btn { flex: 1; justify-content: center; padding: 8px 10px; }
+}
+@media print { .pbar, .pager { display: none !important; } }

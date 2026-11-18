@@ -1,6 +1,7 @@
 // 주소(#/...)에 맞는 화면을 그리고, 클릭·입력을 Actions로 넘긴다.
 (function () {
   const ICON = {
+    prep: 'M5 21V4h12l-2 4 2 4H5',
     dashboard: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z',
     checklist: 'M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2',
     works: 'M4 5h16v14H4zM4 9h16M8 5v4M16 5v4',
@@ -40,32 +41,43 @@
     return ROUTES.find((r) => r[0] === path) || ROUTES[0];
   };
 
-  function badges() {
+  const PREP = ['works', 'playbook', 'creatives', 'links', 'register'];
+  // 왼쪽 메뉴. 광고준비 5단계는 메뉴 하나로 묶고, 안에서 가로 진행 막대로 오간다.
+  const MENU = [
+    { id: '', name: '홈', icon: 'dashboard' },
+    { prep: true, name: '광고준비', icon: 'prep' },
+    { group: '운영' },
+    { id: 'report', name: '성과 입력', icon: 'report' },
+    { id: 'insights', name: '분석·추천', icon: 'insights' },
+    { id: 'budget', name: '예산 조정', icon: 'budget' },
+    { group: '참고' },
+    { id: 'checklist', name: '전체 체크리스트', icon: 'checklist' },
+    { id: 'guide', name: '운영 가이드', icon: 'guide' },
+    { id: 'data', name: '데이터·계정', icon: 'data' },
+  ];
+
+  function badges(flow) {
     const s = Store.state;
     const prog = Calc.checklistProgress().reduce((a, p) => ({ d: a.d + p.done, t: a.t + p.total }), { d: 0, t: 0 });
     const flags = Calc.killFlags().length;
-    const pb = window.Playbook.progress();
     return {
+      prep: [flow.prepDone + '/' + flow.prepTotal, flow.prepDone === flow.prepTotal ? 'ok' : ''],
       checklist: [prog.d + '/' + prog.t, prog.d === prog.t ? 'ok' : ''],
-      works: s.works.length ? [s.works.length + '편', s.works.length >= 3 ? 'ok' : 'warn'] : null,
-      playbook: pb.total ? [pb.done + '/' + pb.total, pb.done === pb.total ? 'ok' : ''] : null,
       report: s.reports.length ? [s.reports.length + '줄', ''] : null,
       insights: flags ? ['끄기 ' + flags, 'bad'] : null,
     };
   }
 
   function renderChrome(route, flow) {
-    const b = badges();
-    let group = null;
-    nav.innerHTML = ROUTES.map((r) => {
-      const headHtml = r[3] !== group && r[3] ? '<div class="nav-group">' + r[3] + (GROUP_NOTE[r[3]] ? ' <span>' + GROUP_NOTE[r[3]] + '</span>' : '') + '</div>' : '';
-      group = r[3];
-      const bd = b[r[2]];
-      const st = flow.find((x) => x.route === r[0]);
-      // 단계 화면은 아이콘 대신 번호를 보여 준다. 끝난 단계는 ✓, 지금 할 단계는 강조.
-      const mark = st ? '<span class="num-dot' + (st.done ? ' done' : st === flow.current ? ' cur' : '') + '" aria-hidden="true">' + (st.done ? '✓' : st.n) + '</span>' : icon(r[2]);
-      const sr = st ? '<span class="sr-only">' + (st.done ? '완료. ' : st === flow.current ? '지금 할 단계. ' : '') + st.n + '단계 </span>' : '';
-      return headHtml + '<a href="#/' + r[0] + '"' + (r === route ? ' class="on" aria-current="page"' : '') + '>' + mark + '<span>' + sr + r[1] + '</span>' +
+    const b = badges(flow);
+    const inPrep = PREP.includes(route[0]);
+    // 광고준비를 누르면 지금 할 단계로 간다. 준비가 끝났으면 첫 단계.
+    const prepHref = flow.current && flow.current.group === '준비' ? flow.current.href : '#/works';
+    nav.innerHTML = MENU.map((m) => {
+      if (m.group) return '<div class="nav-group">' + m.group + '</div>';
+      const on = m.prep ? inPrep : m.id === route[0];
+      const bd = b[m.prep ? 'prep' : m.id];
+      return '<a href="' + (m.prep ? prepHref : '#/' + m.id) + '"' + (on ? ' class="on" aria-current="page"' : '') + '>' + icon(m.icon) + '<span>' + m.name + '</span>' +
         (bd ? '<span class="count ' + bd[1] + '">' + bd[0] + '</span>' : '') + '</a>';
     }).join('');
 
@@ -74,28 +86,39 @@
     $('phaseChip').innerHTML = today < PLAN.start ? '<strong>D-' + Calc.daysBetween(today, PLAN.start) + '</strong> 12/1 시험 시작'
       : today > PLAN.end ? '<strong>집행 종료</strong> 결산 정리'
       : '<strong>' + ph.name + ' 기간</strong> ' + (Calc.daysBetween(ph.start, today) + 1) + '일째';
-    $('topTitle').textContent = route[1];
+    $('topTitle').textContent = inPrep ? '광고준비 · ' + route[1] : route[1];
     document.title = route[1] + ' · 원드라마 광고 집행 관리';
   }
 
-  // 단계 화면 맨 위에 붙는 띠: 지금 몇 단계인지, 이 화면에서 할 일, 이전·다음 단계.
-  function stepBar(route, flow) {
-    const i = flow.findIndex((x) => x.route === route[0]);
-    if (i < 0) return '';
-    const st = flow[i];
-    const prev = flow[i - 1];
-    const next = flow[i + 1];
-    const same = flow.filter((x) => x.group === st.group);
-    const state = st.repeat ? '<span class="tag">' + st.repeat + ' 하는 일</span>'
-      : st.done ? '<span class="tag ok">끝남</span>' : '<span class="tag warn">진행 중</span>';
-    return '<nav class="stepbar" aria-label="진행 단계">' +
-      '<div class="sb-main"><div class="sb-pos">' + st.group + ' ' + (same.indexOf(st) + 1) + '/' + same.length + ' · ' + st.n + '단계 ' + state + '</div>' +
-        '<div class="sb-goal">' + st.goal + ' <span class="muted">(' + st.hint + ')</span></div></div>' +
-      '<div class="sb-nav">' +
-        (prev ? '<a class="btn ghost sm" href="' + prev.href + '">← ' + prev.n + '. ' + prev.t + '</a>' : '<a class="btn ghost sm" href="#/">← 홈</a>') +
-        (next ? '<a class="btn sm' + (st.done || st.repeat ? ' primary' : '') + '" href="' + next.href + '">다음: ' + next.n + '. ' + next.t + ' →</a>' : '') +
-      '</div></nav>';
+  // 광고준비 화면 위: 5단계를 가로 진행 막대로 보여 준다. 끝난 단계는 ✓, 지금 보는 단계는 강조.
+  function prepBar(route, flow) {
+    const prep = flow.filter((x) => x.group === '준비');
+    const st = prep.find((x) => x.route === route[0]);
+    return '<nav class="pbar" aria-label="광고준비 진행">' + prep.map((x) => {
+      const on = x === st;
+      return '<a class="pb' + (x.done ? ' done' : '') + (on ? ' on' : '') + (x === flow.current ? ' cur' : '') + '" href="' + x.href + '"' + (on ? ' aria-current="step"' : '') + '>' +
+        '<span class="pb-dot" aria-hidden="true">' + (x.done ? '✓' : '') + '</span>' +
+        '<span class="pb-t">' + x.t + '<span class="sr-only">' + (x.done ? ' (끝남)' : x === flow.current ? ' (지금 할 일)' : '') + '</span></span>' +
+        '<span class="pb-h">' + x.hint + '</span></a>';
+    }).join('') + '</nav>' +
+      '<p class="goal">' + (st.done ? '<span class="tag ok">끝남</span>' : '<span class="tag warn">진행 중</span>') + ' ' + st.goal + '</p>';
   }
+  // 광고준비 화면 아래: 이전·다음.
+  function prepPager(route, flow) {
+    const prep = flow.filter((x) => x.group === '준비');
+    const i = prep.findIndex((x) => x.route === route[0]);
+    const prev = prep[i - 1];
+    const next = prep[i + 1];
+    return '<div class="pager">' + (prev ? '<a class="btn" href="' + prev.href + '">← ' + prev.t + '</a>' : '<span></span>') +
+      (next ? '<a class="btn' + (prep[i].done ? ' primary' : '') + '" href="' + next.href + '">다음: ' + next.t + ' →</a>'
+            : '<a class="btn' + (prep[i].done ? ' primary' : '') + '" href="#/report">준비 끝 · 운영으로 →</a>') + '</div>';
+  }
+  // 운영 화면 위: 얼마나 자주 하는 일인지 한 줄.
+  function runLine(route, flow) {
+    const st = flow.find((x) => x.route === route[0] && x.group === '집행');
+    return st ? '<p class="goal"><span class="tag">' + st.repeat + ' 하는 일</span> ' + st.goal + ' <span class="muted">' + st.hint + '</span></p>' : '';
+  }
+
   // 읽기만 하면 되는 단계(작품별 계획, 링크 태그)는 화면을 열어 보면 끝난 것으로 본다.
   function markSeen(route) {
     if (route[0] !== 'playbook' && route[0] !== 'links') return;
@@ -118,7 +141,8 @@
     const y = window.scrollY;
     const inner = [...view.querySelectorAll('[style*="overflow-y"]')].map((el) => el.scrollTop);
 
-    view.innerHTML = stepBar(route, flow) + Views[route[2]]();
+    const inPrep = PREP.includes(route[0]);
+    view.innerHTML = (inPrep ? prepBar(route, flow) : runLine(route, flow)) + Views[route[2]]() + (inPrep ? prepPager(route, flow) : '');
     view.dataset.route = route[2];
 
     if (keepScroll) {

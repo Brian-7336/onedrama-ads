@@ -121,8 +121,8 @@
     const curStep = steps.current;
     const setupHtml = '<div class="card nextcard">' +
       (curStep
-        ? '<div class="next"><div class="what"><span class="small muted">지금 할 일 · 준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 끝남</span><strong>' + curStep.n + '단계. ' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.goal) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div>'
-        : '<div class="next"><div class="what"><span class="small muted">준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 단계 끝남</span><strong>준비가 끝났습니다</strong><span class="muted">12/1에 매체에서 광고를 켜고, 12/2부터 전날 성과를 입력합니다.</span></div></div>') + '</div>';
+        ? '<div class="next"><div class="what"><span class="small muted">지금 할 일 · 광고준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 끝남</span><strong>' + h(curStep.t) + '</strong><span class="muted">' + h(curStep.goal) + '</span></div><a class="btn primary" href="' + curStep.href + '">' + h(curStep.cta) + ' →</a></div>'
+        : '<div class="next"><div class="what"><span class="small muted">광고준비 ' + steps.prepDone + '/' + steps.prepTotal + ' 끝남</span><strong>준비가 끝났습니다</strong><span class="muted">12/1에 매체에서 광고를 켜고, 12/2부터 전날 성과를 입력합니다.</span></div></div>') + '</div>';
     const showStats = S().reports.length > 0 || today >= P.start;   // 집행 전에는 0뿐인 숫자를 감춘다
 
     const timeline = Array.from({ length: 31 }, (_, i) => {
