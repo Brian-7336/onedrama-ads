@@ -493,3 +493,6 @@ label.btn.primary:hover { filter: brightness(1.08); }
 .cue span { flex: none; width: 44px; text-align: right; }
 .cue input { flex: 1; min-width: 0; }
 .maker-run .spin { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+
+/* 포스터 */
+.pthumb { height: 44px; width: auto; border-radius: 4px; border: 1px solid var(--line); vertical-align: middle; }

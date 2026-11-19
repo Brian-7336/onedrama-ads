@@ -14,3 +14,6 @@ js/private-data.js
 *.webm
 *.srt
 드라마목록/
+광고_드라마목록/
+# 작품 포스터 (CP 자료). tools/fetch_posters.py 로 받는다
+posters/

@@ -152,6 +152,37 @@
   }
   const srcTime = (r, t) => { let x = t; for (const sg of r.segs) { const d = sg[1] - sg[0]; if (x <= d) return sg[0] + x; x -= d; } return r.segs[r.segs.length - 1][1]; };
 
+  // ---------- 작품 포스터 (끝 화면에 넣는다) ----------
+  // 직접 넣은 포스터(이 브라우저에 보관)를 먼저 쓰고, 없으면 posters/<작품 코드>.jpg 를 쓴다.
+  const pcache = {};          // 작품 코드 → 이미지 또는 null
+  const loadImg = (url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; });
+  async function posterOf(code) {
+    if (code in pcache) return pcache[code];
+    let im = null;
+    try { const f = await window.Assets.raw.get('poster|' + code); if (f) im = await loadImg(URL.createObjectURL(f)); } catch (e) { /* 무시 */ }
+    if (!im) im = await loadImg('posters/' + encodeURIComponent(code) + '.jpg');
+    pcache[code] = im;
+    return im;
+  }
+  async function setPoster(code, file) {
+    const im = await loadImg(URL.createObjectURL(file));
+    if (!im) throw new Error('읽을 수 없는 이미지입니다');
+    await window.Assets.raw.put('poster|' + code, file);
+    pcache[code] = im;
+    Store.update((st) => { (st.posters = st.posters || {})[code] = { name: file.name }; });
+  }
+  function drawPoster(ctx, im, cx, top, bw, bh, U) {
+    const k = Math.min(bw / im.naturalWidth, bh / im.naturalHeight);
+    const pw = im.naturalWidth * k, ph = im.naturalHeight * k, x = cx - pw / 2, y = top + (bh - ph) / 2, rad = 18 * U;
+    const path = () => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, pw, ph, rad); else ctx.rect(x, y, pw, ph); };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 36 * U; ctx.shadowOffsetY = 10 * U;
+    ctx.fillStyle = '#000'; path(); ctx.fill();
+    ctx.restore();
+    ctx.save(); path(); ctx.clip(); ctx.drawImage(im, x, y, pw, ph); ctx.restore();
+    ctx.save(); ctx.shadowColor = 'transparent'; ctx.lineWidth = 3 * U; ctx.strokeStyle = 'rgba(255,255,255,.85)'; path(); ctx.stroke(); ctx.restore();
+  }
+
   // ---------- 편집 내용 기본값 ----------
   function defaults(key) {
     const T = target(key), code = codeOf(key);
@@ -164,6 +195,7 @@
     const base15 = T.kind === 'image' ? pick(src, 15, []) : seg;
     return {
       subsOn: true, cues: T.kind === 'image' ? [] : cuesFor(code, seg[0], seg[1]),
+      poster: true,
       src: 'src|' + code, segs: [seg], at: r1(clamp(base15[0] + ({ im01: 2, im02: 6, bn01: 10 }[T.id] || 3), 0, Math.max(0, src.dur - 0.2))),
       fit: 'auto', pos: 50, genre: wd.genre || '', title: w.title || '', sub: '', hook: '',
       cta1: FORM.cta1, cta2: FORM.cta2, benefit: wd.free ? '1~' + wd.free + '화 무료' : '', end: L <= 6 ? 1.5 : L <= 15 ? 3 : 4,
@@ -278,6 +310,9 @@
         ? [r.cta1.slice(0, r.cta1.lastIndexOf(' ')), r.cta1.slice(r.cta1.lastIndexOf(' ') + 1)] : (r.cta1 ? [r.cta1] : []);
       const s1 = (still ? 66 : tall ? 88 : 80) * U;
       const hookIn = r.hook && !(tall && !still);          // 세로 영상은 한 줄 문구를 위쪽 띠에 따로 그린다
+      // 포스터가 있으면: 세로는 글자 위에, 가로는 왼쪽에 두고 글자를 오른쪽으로 민다.
+      const po = !still && r.poster !== false && m.poster ? m.poster : null;
+      const cx = po && !tall ? W * 0.64 : W / 2, mw = po && !tall ? W * 0.62 : W;
       const blocks = [];
       if (hookIn) blocks.push({ k: 'hook', h: 70 * U });
       c1.forEach((l) => blocks.push({ k: 'c1', text: l, h: s1 * 1.28 }));
@@ -285,7 +320,7 @@
       blocks.push({ k: 'logo', h: 104 * U });
       if (r.benefit) blocks.push({ k: 'ben', h: 70 * U });
       const stackH = blocks.reduce((x, b) => x + b.h, 0);
-      let y = still ? H - stackH - 56 * U : tall ? H * 0.6 : (H - stackH) / 2 + 24 * U;
+      let y = still ? H - stackH - 56 * U : tall ? H * (po ? 0.62 : 0.6) : (H - stackH) / 2 + 24 * U;
       if (still) {
         const gb = ctx.createLinearGradient(0, y - 200 * U, 0, H);
         gb.addColorStop(0, 'rgba(0,0,0,0)'); gb.addColorStop(0.45, 'rgba(6,6,14,.78)'); gb.addColorStop(1, 'rgba(6,6,14,.94)');
@@ -297,32 +332,36 @@
         ctx.fillStyle = gb; ctx.fillRect(0, H * 0.45, W, H * 0.55);
       }
       if (r.hook && tall && !still) {
-        const y0 = 340 * U, y1 = 600 * U;
+        const y0 = (po ? 300 : 340) * U, y1 = (po ? 490 : 600) * U;
         ctx.fillStyle = 'rgba(10,10,26,.55)'; ctx.fillRect(0, y0, W, y1 - y0);
         ctx.fillStyle = FORM.blue; ctx.fillRect(0, y0, W, 5 * U); ctx.fillRect(0, y1 - 5 * U, W, 5 * U);
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = '600 ' + Math.round(64 * U) + 'px ' + FORM.serif;
+        ctx.font = '600 ' + Math.round((po ? 50 : 64) * U) + 'px ' + FORM.serif;
         const ls = wrap(ctx, r.hook, W - 120 * U, 2);
-        ls.forEach((l, i) => ctx.fillText(l, W / 2, (y0 + y1) / 2 + (i - (ls.length - 1) / 2) * 92 * U));
+        ls.forEach((l, i) => ctx.fillText(l, W / 2, (y0 + y1) / 2 + (i - (ls.length - 1) / 2) * (po ? 70 : 92) * U));
+      }
+      if (po) {
+        if (tall) { const top = (r.hook ? 525 : 320) * U; drawPoster(ctx, po, W / 2, top, W - 300 * U, y - 45 * U - top, U); }
+        else drawPoster(ctx, po, W * 0.2, 130 * U, W * 0.3, H - 230 * U, U);
       }
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       blocks.forEach((b) => {
         const cy = y + b.h / 2;
         ctx.fillStyle = '#fff';
-        if (b.k === 'hook') { fitFont(ctx, r.hook, 600, 46 * U, FORM.serif, W - 120 * U); ctx.fillText(r.hook, W / 2, cy); }
-        if (b.k === 'c1') { fitFont(ctx, b.text, 900, s1, FORM.sans, W - 100 * U); ctx.fillText(b.text, W / 2, cy); }
+        if (b.k === 'hook') { fitFont(ctx, r.hook, 600, 46 * U, FORM.serif, mw - 120 * U); ctx.fillText(r.hook, cx, cy); }
+        if (b.k === 'c1') { fitFont(ctx, b.text, 900, s1, FORM.sans, mw - 100 * U); ctx.fillText(b.text, cx, cy); }
         if (b.k === 'c2') {
-          fitFont(ctx, r.cta2, 700, 52 * U, FORM.sans, W - 120 * U);
-          const i = r.cta2.indexOf(FORM.hi), full = ctx.measureText(r.cta2).width, x0 = W / 2 - full / 2;
+          fitFont(ctx, r.cta2, 700, 52 * U, FORM.sans, mw - 120 * U);
+          const i = r.cta2.indexOf(FORM.hi), full = ctx.measureText(r.cta2).width, x0 = cx - full / 2;
           if (i >= 0) {
             const pre = ctx.measureText(r.cta2.slice(0, i)).width, hw = ctx.measureText(FORM.hi).width;
             ctx.fillStyle = FORM.blue; ctx.fillRect(x0 + pre - 6 * U, cy - 36 * U, hw + 12 * U, 72 * U);
             ctx.fillStyle = '#fff';
           }
-          ctx.fillText(r.cta2, W / 2, cy + 2 * U);
+          ctx.fillText(r.cta2, cx, cy + 2 * U);
         }
-        if (b.k === 'logo') logo(ctx, W / 2, cy, 72 * U, 'center');
-        if (b.k === 'ben') { ctx.fillStyle = FORM.yellow; fitFont(ctx, r.benefit, 700, 40 * U, FORM.sans, W - 120 * U); ctx.fillText(r.benefit, W / 2, cy); }
+        if (b.k === 'logo') logo(ctx, cx, cy, 72 * U, 'center');
+        if (b.k === 'ben') { ctx.fillStyle = FORM.yellow; fitFont(ctx, r.benefit, 700, 40 * U, FORM.sans, mw - 120 * U); ctx.fillText(r.benefit, cx, cy); }
         ctx.textAlign = 'center';
         y += b.h;
       });
@@ -339,6 +378,7 @@
     if (!file) throw new Error('원본이 이 브라우저에 없습니다. 원본 영상을 다시 골라 주세요');
     const m = await openMedia(file);
     await iconReady;
+    m.poster = await posterOf(codeOf(key));
     const v = m.el;
     const c = document.createElement('canvas'); c.width = T.W; c.height = T.H;
     const ctx = c.getContext('2d');
@@ -397,6 +437,7 @@
   }
   // 만들어서 소재 칸에 넣고, 편집 내용을 함께 저장한다 (나중에 「수정」으로 다시 연다).
   async function makeInto(key, r, onp, ctl) {
+    if (r.poster == null) r.poster = true;
     const file = await make(key, r, onp, ctl);
     const problems = await window.Assets.put(key, file);
     Store.update((s) => { const c = (s.creatives[key] = s.creatives[key] || {}); c.edit = r; c.file.made = true; });
@@ -413,10 +454,18 @@
     const sin = '<input type="file" accept=".srt,.txt" data-chg="makerSubs" data-code="' + h(code) + '" hidden>';
     const subHtml = ' <span class="srcsub"><strong>자막</strong> ' + (sb ? h(sb.name) + ' <span class="muted small">' + sb.cues.length + '줄</span> <label class="link-btn">바꾸기' + sin + '</label>'
       : '<span class="muted">없음</span> <label class="btn sm upload">자막 파일(.srt) 넣기' + sin + '</label>') + '</span>';
+    // 포스터가 있는지는 한 번 확인한 뒤 다시 그린다.
+    if (!(code in pcache)) posterOf(code).then(() => window.App.render(true));
+    const po = pcache[code];
+    const pin = '<input type="file" accept="image/*" data-chg="makerPoster" data-code="' + h(code) + '" hidden>';
+    const nop = noPosterKeys(code).length;
+    const posterHtml = ' <span class="srcsub"><strong>포스터</strong> ' + (po ? '<img class="pthumb" src="' + h(po.src) + '" alt="작품 포스터"> <label class="link-btn">바꾸기' + pin + '</label>'
+      : '<span class="muted">없음</span> <label class="btn sm upload">포스터 넣기' + pin + '</label>') + '</span>' +
+      (nop ? ' <button class="sm primary" data-act="makerRedoPoster" data-code="' + h(code) + '">포스터 넣어 영상 ' + nop + '개 다시 만들기</button>' : '');
     return '<div class="srcrow' + (src ? '' : ' need') + '"><strong>원본 영상</strong> ' +
       (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label>'
         : '<span class="muted">없음. 1화나 예고편 파일을 고르면 원드라마 형식으로 잘라 빈 칸을 채웁니다.</span> <label class="btn primary srcpick">＋ 원본 영상 고르기' + input + '</label>') +
-      subHtml + (src && noSubKeys(code).length ? ' <button class="sm primary" data-act="makerRedoSubs" data-code="' + h(code) + '">자막 넣어 영상 ' + noSubKeys(code).length + '개 다시 만들기</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
+      subHtml + posterHtml + (src && noSubKeys(code).length ? ' <button class="sm primary" data-act="makerRedoSubs" data-code="' + h(code) + '">자막 넣어 영상 ' + noSubKeys(code).length + '개 다시 만들기</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
   }
   Actions.makerSource = (el) => {
     const file = el.files && el.files[0];
@@ -484,6 +533,26 @@
       return c.file && c.file.made && target(k).kind === 'video' && c.edit && c.edit.src === 'src|' + code && c.edit.subsOn !== false && !(c.edit.cues || []).length && cuesFor(code, c.edit.segs[0][0], c.edit.segs[0][1]).length;
     });
   }
+  // 포스터 없이 만든 영상: 포스터가 있는데 편집 내용에 포스터 표시가 없는 자동 제작 영상.
+  function noPosterKeys(code) {
+    if (!pcache[code]) return [];
+    return window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((k) => {
+      const c = Store.state.creatives[k] || {};
+      return c.file && c.file.made && target(k).kind === 'video' && c.edit && c.edit.poster == null;
+    });
+  }
+  Actions.makerRedoPoster = (el) => {
+    const code = el.dataset.code;
+    runBatch(noPosterKeys(code), (k) => { const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit)); r.poster = true; return r; }, '포스터 넣은 영상');
+    return false;
+  };
+  Actions.makerPoster = (el) => {
+    const file = el.files && el.files[0];
+    if (!file) return false;
+    setPoster(el.dataset.code, file).then(() => { toast('포스터를 넣었습니다. 이제 만드는 영상의 끝 화면에 들어갑니다'); window.App.render(true); })
+      .catch((e) => toast('포스터를 넣지 못했습니다: ' + e.message));
+    return false;
+  };
   Actions.makerRedoSubs = (el) => {
     const code = el.dataset.code;
     runBatch(noSubKeys(code), (k) => { const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit)); r.subsOn = true;
@@ -519,6 +588,7 @@
     }
     const m = await openMedia(file);
     await iconReady;
+    m.poster = await posterOf(code);
     const v = m.el;
     const isVid = T.kind === 'video';
     if (isVid && m.image) { URL.revokeObjectURL(m.url); toast('영상 칸은 원본이 영상이어야 합니다'); return; }
@@ -539,6 +609,7 @@
       (isVid ? fld('첫 3초 자막 (비우면 없음)', 'sub', r.sub, ' placeholder="예: 결혼식 날, 신랑이 사라졌다"') : '') +
       fld('끝 화면 한 줄 (비우면 없음)', 'hook', r.hook, ' placeholder="예: 보낸 지 6분. 지울 수 없다."') +
       fld('끝 화면 큰 글자', 'cta1', r.cta1) + fld('끝 화면 둘째 줄 (「원스토어」는 파란 상자)', 'cta2', r.cta2) + fld('혜택 한 줄 (노란 글자)', 'benefit', r.benefit) +
+      (isVid ? '<label class="check"><input type="checkbox" data-f="poster"' + (r.poster !== false ? ' checked' : '') + (m.poster ? '' : ' disabled') + '><span class="t">끝 화면에 작품 포스터 넣기' + (m.poster ? '' : ' <span class="muted small">(포스터 없음. 소재 화면에서 넣을 수 있습니다)</span>') + '</span></label>' : '') +
       (isVid ? '<label class="mf"><span>끝 화면 길이 (초)</span><input type="number" data-f="end" min="0" max="' + Math.floor(L / 2) + '" step="0.5" value="' + r.end + '"></label>' : '') +
       '<div class="row maker-go"><button class="primary" data-x="make">' + (cur.file ? '다시 만들어 바꿔 넣기' : '만들어서 넣기') + '</button><span class="small muted" data-x="msg">' + (isVid ? '만드는 데 약 ' + L + '초 걸립니다.' : '') + '</span></div></div></div>');
     const cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
@@ -583,6 +654,7 @@
       const f = el.dataset.f;
       if (!f) return;
       if (f === 'subsOn') { r.subsOn = el.checked; if (!playing) show(); return; }
+      if (f === 'poster') { r.poster = el.checked; if (!playing) { t = Math.max(0, L - 0.01); show(); } return; }
       if (f === 'start') { stop(); const a = r1(+el.value); r.segs = [[a, r1(a + L)]]; if (ownSrc) r.cues = cuesFor(code, a, a + L); listCues(); t = 0; show(); return; }
       if (f === 'at') { r.at = r1(+el.value); show(); return; }
       r[f] = f === 'pos' || f === 'end' ? +el.value : el.value;
@@ -622,5 +694,5 @@
   }
   Actions.makerOpen = (el) => { const b = window.UI.busy('편집기를 여는 중'); openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)).then(() => b.done()); return false; };
 
-  window.Maker = { sourceRow, setSource, setSubs, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
+  window.Maker = { sourceRow, setSource, setSubs, setPoster, posterOf, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
 })();
