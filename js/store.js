@@ -14,7 +14,7 @@
       subtitles: {},       // 작품 코드 → 자막 {name, cues: [[시작초, 끝초, 글자]]}
       flowSeen: {},        // 읽기만 하는 단계를 열어 봤는지 {playbook: true, links: true}
       reports: [],         // [{id, date, media, work, creative, imp, clk, start, ep3, pay, cost}]
-      settings: { ytMedium: 'paid_social', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)
+      settings: { ytMedium: 'paid_video', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)
     };
   }
 

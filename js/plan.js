@@ -138,7 +138,7 @@ window.PLAN = {
           name: '측정·링크', items: [
             { id: 'p06', text: '위키 「유입 링크 태그 규칙」(651924478) 표에 paid_search, display 줄 추가', owner: '브라이언' },
             { id: 'p07', text: 'GA4 담당 윤현정 님께 공유', owner: '브라이언' },
-            { id: 'p08', text: '유튜브 medium을 paid_social로 둘지 정하기', owner: '브라이언', link: '#/links' },
+            { id: 'p08', text: '유튜브 medium 확정: paid_video (메타와 나눠 본다. 집행 중에는 바꾸지 않는다)', owner: '브라이언', link: '#/links' },
             { id: 'p09', text: '작품별 utm 링크 만들기', owner: '브라이언', link: '#/links' },
             { id: 'p10', text: '시험 클릭으로 GA4 이벤트 확인: video_start, 3화 시청, purchase', owner: '윤현정' },
             { id: 'p11', text: '랜딩이 앱 설치 없이 재생·결제되는지 확인 (사파리, 크롬, 인스타그램·페이스북 인앱)', owner: '브라이언' },
@@ -259,7 +259,6 @@ window.PLAN = {
   openQuestions: [
     '위키 651924478 페이지의 실제 위치',
     '메타에서 피드, 페이스북, 스레드 지면을 켤지',
-    '유튜브 medium을 paid_social로 둘지, paid_video로 나눌지',
     '하루 예산 반올림으로 생긴 5,000원 초과분을 맞출지',
     'CP 추천작 중 공개 보류 2편이 12월 안에 공개되는지',
     '공식 계정 공유 게시물에 붙일 utm 값',

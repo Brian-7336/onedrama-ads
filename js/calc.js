@@ -196,7 +196,7 @@
     },
 
     // utm 링크
-    ytMedium() { return Store.state.settings.ytMedium || 'paid_social'; },
+    ytMedium() { return Store.state.settings.ytMedium || 'paid_video'; },
     mediumOf(m) { return m.id === 'youtube' ? Calc.ytMedium() : m.medium; },
     buildUrl(base, m, content) {
       const params = 'utm_source=' + m.source + '&utm_medium=' + Calc.mediumOf(m) +

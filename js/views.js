@@ -466,7 +466,7 @@
       '<div class="card"><h2>규칙</h2><dl class="kv">' +
         '<dt>campaign</dt><dd><code>' + P.campaign + '</code> 하나로 둔다. 시기가 바뀌어도 그대로 두고 소재로 나눠 본다.</dd>' +
         '<dt>content</dt><dd>영상·이미지·배너는 <code>작품코드_소재번호</code> (예: <code>작품ID_v15a</code>). 작품코드는 원드라마 작품 ID를 소문자로 쓴다. 화면에는 끝 4글자만 보인다. 검색은 키워드 묶음 (<code>brand</code>, <code>genre</code>, <code>w01_title</code>).</dd>' +
-        '<dt>유튜브 medium</dt><dd><select data-chg="setYtMedium" aria-label="유튜브 medium">' + opt('paid_social', 'paid_social (시트 기준)', Calc.ytMedium()) + opt('paid_video', 'paid_video (메타와 분리)', Calc.ytMedium()) + '</select> ' +
+        '<dt>유튜브 medium</dt><dd><select data-chg="setYtMedium" aria-label="유튜브 medium">' + opt('paid_video', 'paid_video (메타와 분리, 기본)', Calc.ytMedium()) + opt('paid_social', 'paid_social (메타와 합쳐 보기)', Calc.ytMedium()) + '</select> ' +
           (sameMedium ? '<span class="small muted">메타와 같은 값이라 GA4에서는 source로만 나뉜다.</span>' : '<span class="tag warn">위키 표에 없는 값. 쓰기 전에 표에 추가하고 GA4 담당에게 알린다.</span>') + '</dd>' +
         '<dt>위키에 없는 값</dt><dd><code>paid_search</code>, <code>display</code>는 위키 표에 한 줄 더하고 GA4 담당(윤현정 님)께 알린 뒤 쓴다.</dd>' +
       '</dl></div>' +
@@ -483,7 +483,7 @@
   };
   const visibleLinks = () => Calc.allLinks().filter((l) => !ui.links.media || l.media.id === ui.links.media);
   Actions.filterLinks = (el) => { ui.links.media = el.value; };
-  Actions.setYtMedium = (el) => Store.update((s) => { s.settings.ytMedium = el.value; });
+  Actions.setYtMedium = (el) => Store.update((s) => { s.settings.ytMedium = el.value; s.settings.ytMediumSet = true; });
   Actions.copyLink = (el) => { const l = visibleLinks()[+el.dataset.i]; copy(l[el.dataset.kind], l.content + ' 복사했습니다'); return false; };
   Actions.copyAllLinks = () => { const ls = visibleLinks().filter((l) => l.url); if (!ls.length) { toast('복사할 링크가 없습니다'); return false; } copy(ls.map((l) => l.url).join('\n'), ls.length + '개 링크를 복사했습니다'); return false; };
   Actions.csvLinks = () => {
@@ -695,7 +695,7 @@
     const tagBy = { v06: '예고편', v15a: '갈등·반전', v15b: '설렘·로맨스', v30a: '예고편', v60a: '예고편', im01: '배우 중심', im02: '명대사' };
     const creatives = {};
     works.forEach((w) => Object.keys(tagBy).forEach((id) => { creatives[w.code + '_' + id] = { tag: tagBy[id], status: '집행 중' }; }));
-    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives, extraCreatives: {}, reports, settings: { ytMedium: 'paid_social', daily: {}, accounts: Calc.accounts() } });
+    Store.replace({ v: 1, checks: { p01: true, p03: true }, customChecks: [], works, creatives, extraCreatives: {}, reports, settings: { ytMedium: 'paid_video', ytMediumSet: true, daily: {}, accounts: Calc.accounts() } });
     toast('예시 데이터를 넣었습니다');
   };
 

@@ -240,6 +240,9 @@
   });
   window.App = { render };
 
+  // 유튜브 medium 기본값을 paid_video로 바꿨다 (2026-11-19 결정). 예전 기본값으로 저장된 것은 한 번만 옮긴다.
+  if (!Store.state.settings.ytMediumSet) { Store.state.settings.ytMedium = 'paid_video'; Store.state.settings.ytMediumSet = true; Store.save(); }
+
   // 옛 작품 코드(w01 등)를 원드라마 작품 ID 코드로 옮긴다. 보관한 소재 파일의 이름표도 같이 옮긴다.
   (function () {
     const before = Object.keys(Store.state.creatives).filter((k) => (Store.state.creatives[k] || {}).file);
