@@ -100,7 +100,7 @@
     return '<div class="asset"><button class="link-btn asset-name" data-act="previewAsset" data-key="' + h(key) + '" title="' + h(f.name) + ' 재생·미리 보기">▶ ' + h(f.name) + '</button>' + (f.made ? '<span class="tag accent" title="이 사이트에서 원드라마 형식으로 만든 파일">자동 제작</span>' : '') +
       '<span class="small muted">' + info + '</span>' +
       (f.problems && f.problems.length ? '<span class="tag bad" title="' + h(f.problems.join(' / ')) + '">규격 확인: ' + h(f.problems[0]) + '</span>' : '<span class="tag ok">규격 맞음</span>') +
-      '<span class="asset-act">' + mk + ' <button class="link-btn" data-act="downloadAsset" data-key="' + h(key) + '">내려받기</button> <label class="link-btn">바꾸기' + input + '</label> <button class="link-btn" data-act="delAsset" data-key="' + h(key) + '">지우기</button></span></div>';
+      '<span class="asset-act">' + mk + (f.made && (Store.state.creatives[key] || {}).edit ? ' <button class="link-btn" data-act="makerRedo" data-key="' + h(key) + '" title="지금의 원본·자막·포스터로 이 소재만 다시 만듭니다">다시 만들기</button>' : '') + ' <button class="link-btn" data-act="downloadAsset" data-key="' + h(key) + '">내려받기</button> <label class="link-btn">바꾸기' + input + '</label> <button class="link-btn" data-act="delAsset" data-key="' + h(key) + '">지우기</button></span></div>';
   }
   function summary() {
     const fs = Object.values(Store.state.creatives).map((c) => c.file).filter(Boolean);

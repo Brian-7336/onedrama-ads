@@ -106,6 +106,7 @@
   }
 
   // ---------- 원본 영상 보관 ----------
+  const srcSig = (code) => { const x = sources()[code]; return x ? x.name + '|' + x.size : ''; };
   async function setSource(code, file) {
     if (!file.type.startsWith('video/')) throw new Error('원본은 영상 파일이어야 합니다');
     const b = window.UI.busy('원본 영상을 분석하는 중 0%');
@@ -181,6 +182,41 @@
     ctx.restore();
     ctx.save(); path(); ctx.clip(); ctx.drawImage(im, x, y, pw, ph); ctx.restore();
     ctx.save(); ctx.shadowColor = 'transparent'; ctx.lineWidth = 3 * U; ctx.strokeStyle = 'rgba(255,255,255,.85)'; path(); ctx.stroke(); ctx.restore();
+  }
+
+  // ---------- 작품 폴더에서 골라내기 ----------
+  // 폴더 안 파일 목록에서 원본 영상(예고편 우선, 없으면 1화), 그 영상의 자막, 포스터를 고른다.
+  const TRAILER = /예고|trailer|티저|teaser|ep[._ -]?0?0(?!\d)|(^|[^0-9])0화/;
+  const EP1 = /ep[._ -]?0?1(?!\d)|(^|[^0-9])0?1화|(^|[^0-9])1회|[_ -]0?01\.[a-z0-9]+$/;
+  function pickFromFolder(files) {
+    const list = [...files].map((f) => ({ f, p: (f.webkitRelativePath || f.name).toLowerCase(), n: f.name.toLowerCase() }));
+    const stem = (n) => n.replace(/\.[a-z0-9]+$/, '').replace(/[_ -]?(clean|v\d+|final|ko|kor|en|eng)$/g, '').replace(/[_ -]?(clean|v\d+|final)$/g, '');
+    const dir = (x) => x.p.slice(0, x.p.lastIndexOf('/') + 1);
+    const best = (arr, score) => arr.map((x) => ({ x, s: score(x) })).sort((a, b) => b.s - a.s || (a.x.p < b.x.p ? -1 : 1))[0];
+    const vids = list.filter((x) => /\.(mp4|mov|m4v|webm|mkv)$/.test(x.n));
+    const v = best(vids, (x) => (TRAILER.test(x.p) ? 100 : EP1.test(x.p) ? 40 : 0) + (/clean|클린|자막\s*없/.test(x.n) ? 10 : 0) + (/\.mp4$/.test(x.n) ? 5 : 0) - (/[_ -](en|eng)\./.test(x.n) ? 5 : 0));
+    const video = v ? v.x : null;
+    const kind = !video ? '' : TRAILER.test(video.p) ? '예고편' : EP1.test(video.p) ? '1화' : '첫 영상';
+    let subs = null;
+    if (video) {
+      const vs = stem(video.n);
+      const sb = best(list.filter((x) => /\.srt$/.test(x.n)), (x) => {
+        const ss = stem(x.n);
+        const rel = (vs.startsWith(ss) || ss.startsWith(vs) ? 50 : 0) + (kind === '예고편' && TRAILER.test(x.p) ? 30 : 0) + (kind === '1화' && EP1.test(x.p) && !TRAILER.test(x.p) ? 30 : 0);
+        return rel ? rel + (dir(x) === dir(video) ? 20 : 0) - (/[_ -](en|eng)\.srt$/.test(x.n) ? 40 : 0) + (/[_ -](ko|kor)\.srt$/.test(x.n) ? 10 : 0) : -1;
+      });
+      if (sb && sb.s > 0) subs = sb.x;
+    }
+    const po = best(list.filter((x) => /\.(jpe?g|png|webp)$/.test(x.n)), (x) => (/포스터|poster/.test(x.p) ? 50 : 0) + (/키비주얼|key ?visual|kv/.test(x.p) ? 20 : 0) + (/세로|vertical|9x16|9_16/.test(x.p) ? 10 : 0) - (/가로|horizontal|16x9|16_9/.test(x.p) ? 10 : 0) - (/스틸|still|로고|logo|썸네일|thumb/.test(x.p) ? 60 : 0));
+    return { video: video && video.f, kind, subs: subs && subs.f, poster: po && po.s > 0 ? po.x.f : null, counts: { files: list.length, videos: vids.length } };
+  }
+  async function setFolder(code, files) {
+    const c = pickFromFolder(files);
+    const got = [], miss = [];
+    if (c.video) { await setSource(code, c.video); got.push(c.kind + ' ' + c.video.name); } else miss.push('영상');
+    if (c.subs) { try { const cu = await setSubs(code, c.subs); got.push('자막 ' + c.subs.name + ' (' + cu.length + '줄)'); } catch (e) { miss.push('자막(읽지 못함)'); } } else miss.push('자막');
+    if (c.poster) { try { await setPoster(code, c.poster); got.push('포스터 ' + c.poster.name); } catch (e) { miss.push('포스터(읽지 못함)'); } } else miss.push('포스터');
+    return { got, miss, counts: c.counts };
   }
 
   // ---------- 편집 내용 기본값 ----------
@@ -438,6 +474,7 @@
   // 만들어서 소재 칸에 넣고, 편집 내용을 함께 저장한다 (나중에 「수정」으로 다시 연다).
   async function makeInto(key, r, onp, ctl) {
     if (r.poster == null) r.poster = true;
+    if (r.src === 'src|' + codeOf(key)) r.srcSig = srcSig(codeOf(key));
     const file = await make(key, r, onp, ctl);
     const problems = await window.Assets.put(key, file);
     Store.update((s) => { const c = (s.creatives[key] = s.creatives[key] || {}); c.edit = r; c.file.made = true; });
@@ -458,14 +495,15 @@
     if (!(code in pcache)) posterOf(code).then(() => window.App.render(true));
     const po = pcache[code];
     const pin = '<input type="file" accept="image/*" data-chg="makerPoster" data-code="' + h(code) + '" hidden>';
-    const nop = noPosterKeys(code).length;
+    const fin = '<input type="file" webkitdirectory data-chg="makerFolder" data-code="' + h(code) + '" hidden>';
+    const made = madeKeys(code).length;
+    const stale = [noSubKeys(code).length ? '자막' : '', noPosterKeys(code).length ? '포스터' : ''].filter(Boolean).join('·');
     const posterHtml = ' <span class="srcsub"><strong>포스터</strong> ' + (po ? '<img class="pthumb" src="' + h(po.src) + '" alt="작품 포스터"> <label class="link-btn">바꾸기' + pin + '</label>'
-      : '<span class="muted">없음</span> <label class="btn sm upload">포스터 넣기' + pin + '</label>') + '</span>' +
-      (nop ? ' <button class="sm primary" data-act="makerRedoPoster" data-code="' + h(code) + '">포스터 넣어 영상 ' + nop + '개 다시 만들기</button>' : '');
+      : '<span class="muted">없음</span> <label class="btn sm upload">포스터 넣기' + pin + '</label>') + '</span>';
     return '<div class="srcrow' + (src ? '' : ' need') + '"><strong>원본 영상</strong> ' +
-      (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label>'
-        : '<span class="muted">없음. 1화나 예고편 파일을 고르면 원드라마 형식으로 잘라 빈 칸을 채웁니다.</span> <label class="btn primary srcpick">＋ 원본 영상 고르기' + input + '</label>') +
-      subHtml + posterHtml + (src && noSubKeys(code).length ? ' <button class="sm primary" data-act="makerRedoSubs" data-code="' + h(code) + '">자막 넣어 영상 ' + noSubKeys(code).length + '개 다시 만들기</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
+      (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label> <label class="link-btn" title="작품 폴더를 고르면 예고편·자막·포스터를 다시 골라냅니다">폴더에서 다시 고르기' + fin + '</label>'
+        : '<span class="muted">없음. 작품 폴더를 고르면 그 안에서 예고편(없으면 1화)·자막·포스터를 골라냅니다.</span> <label class="btn primary srcpick">＋ 작품 폴더 고르기' + fin + '</label> <label class="link-btn">영상 파일 하나만 고르기' + input + '</label>') +
+      subHtml + posterHtml + (src && made ? ' <button class="sm' + (stale ? ' primary' : '') + '" data-act="makerRedoAll" data-code="' + h(code) + '" title="고쳐 둔 글자와 설정은 그대로 두고, 지금의 원본·자막·포스터로 다시 만듭니다">만든 소재 ' + made + '개 모두 다시 만들기' + (stale ? ' (' + stale + ' 반영)' : '') + '</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
   }
   Actions.makerSource = (el) => {
     const file = el.files && el.files[0];
@@ -541,11 +579,6 @@
       return c.file && c.file.made && target(k).kind === 'video' && c.edit && c.edit.poster == null;
     });
   }
-  Actions.makerRedoPoster = (el) => {
-    const code = el.dataset.code;
-    runBatch(noPosterKeys(code), (k) => { const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit)); r.poster = true; return r; }, '포스터 넣은 영상');
-    return false;
-  };
   Actions.makerPoster = (el) => {
     const file = el.files && el.files[0];
     if (!file) return false;
@@ -553,14 +586,46 @@
       .catch((e) => toast('포스터를 넣지 못했습니다: ' + e.message));
     return false;
   };
-  Actions.makerRedoSubs = (el) => {
+  // 이 사이트에서 만든 소재 (편집 내용이 남아 있어 다시 만들 수 있는 것)
+  function madeKeys(code) {
+    return window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((k) => { const c = Store.state.creatives[k] || {}; return c.file && c.file.made && c.edit; });
+  }
+  // 다시 만들 때의 편집 내용: 고쳐 둔 글자·설정은 그대로 두고, 지금의 원본·자막·포스터를 반영한다.
+  function redoRecipe(k) {
+    const code = codeOf(k), T = target(k), src = sources()[code];
+    const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit));
+    r.poster = r.poster !== false;
+    if (r.src !== 'src|' + code || !src) return r;          // 직접 올린 파일을 고쳐 만든 것은 그대로 다시 만든다
+    const seg = r.segs[0];
+    const others = window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((x) => x !== k && target(x).kind === 'video')
+      .map((x) => ((Store.state.creatives[x] || {}).edit || {})).filter((e) => e.src === r.src && e.segs).map((e) => e.segs[0]);
+    const changed = (r.srcSig && r.srcSig !== srcSig(code)) || seg[1] > src.dur + 0.05 || (r.at || 0) > src.dur;
+    const dup = /b$/.test(k) && others.some((sg) => sg[0] === seg[0] && sg[1] === seg[1]);   // 15초 A·B가 같은 구간이면 B를 다른 장면으로
+    if (changed) { const d = defaults(k); r.segs = d.segs; r.at = d.at; r.cues = d.cues; }
+    else if (dup) { r.segs = [pick(src, seg[1] - seg[0], others)]; r.cues = cuesFor(code, r.segs[0][0], r.segs[0][1]); }
+    else if (T.kind === 'video' && r.subsOn !== false && !(r.cues || []).length) r.cues = cuesFor(code, seg[0], seg[1]);
+    return r;
+  }
+  Actions.makerRedoAll = (el) => { runBatch(madeKeys(el.dataset.code), redoRecipe, '만든 소재'); return false; };
+  Actions.makerRedo = (el) => { runBatch([el.dataset.key], redoRecipe, '소재'); return false; };
+  Actions.makerFolder = (el) => {
+    const files = el.files ? [...el.files] : [];
+    el.value = '';
+    if (!files.length) return false;
     const code = el.dataset.code;
-    runBatch(noSubKeys(code), (k) => { const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit)); r.subsOn = true;
-      // 예전 방식으로 고른 구간이 다른 소재와 똑같으면(예: 15초 A·B가 둘 다 0초부터) 다른 장면으로 다시 고른다.
-      const same = window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((x) => x !== k && target(x).kind === 'video').map((x) => ((Store.state.creatives[x] || {}).edit || {}).segs).filter(Boolean).map((sg) => sg[0]);
-      if (same.some((sg) => sg[0] === r.segs[0][0] && sg[1] === r.segs[0][1]) && /b$/.test(k)) r.segs = [pick(sources()[code], r.segs[0][1] - r.segs[0][0], same)]; r.cues = cuesFor(code, r.segs[0][0], r.segs[0][1]); return r; }, '자막 넣은 영상');
+    setFolder(code, files).then((x) => {
+      const n = madeKeys(code).length;
+      note('작품 폴더에서 골랐습니다', (x.got.length ? '<ul>' + x.got.map((g) => '<li>' + h(g) + '</li>').join('') + '</ul>' : '') +
+        (x.miss.length ? '<p class="small muted">찾지 못한 것: ' + h(x.miss.join(', ')) + ' (폴더 안 파일 ' + x.counts.files + '개 중 영상 ' + x.counts.videos + '개). 아래 줄의 「바꾸기」·「넣기」로 직접 고를 수 있습니다.</p>' : '') +
+        (n && x.got.length ? '<p class="small muted">이미 만든 소재 ' + n + '개는 「모두 다시 만들기」를 누르면 새 원본으로 다시 만듭니다.</p>' : ''));
+      window.App.render(true);
+    }).catch((e) => { toast('폴더에서 고르지 못했습니다: ' + e.message); window.App.render(true); });
     return false;
   };
+  function note(title, html) {
+    const box = dialog('maker-run', '<h3>' + h(title) + '</h3>' + html + '<div class="row"><button class="primary" data-x="close">확인</button></div>');
+    box.querySelector('[data-x=close]').onclick = () => box.close();
+  }
 
   // ---------- 편집기 ----------
   async function openEditor(key) {
@@ -694,5 +759,5 @@
   }
   Actions.makerOpen = (el) => { const b = window.UI.busy('편집기를 여는 중'); openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)).then(() => b.done()); return false; };
 
-  window.Maker = { sourceRow, setSource, setSubs, setPoster, posterOf, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
+  window.Maker = { sourceRow, setSource, setSubs, setPoster, posterOf, pickFromFolder, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
 })();
