@@ -349,9 +349,9 @@
       '<div class="card"><h2>광고할 작품 <span class="tag ' + (picked.length >= 3 ? 'ok' : 'warn') + '">' + picked.length + ' / 3~5편</span></h2>' + pickedHtml +
         (picked.length < 5 ? '<p style="margin:12px 0 0"><button class="primary" data-act="autoPick">' + (picked.length < 3 ? '추천 조합으로 채우기' : '추천작 1편 더 고르기') + '</button> <span class="small muted">CP 추천, 팬덤, 신작, 예고편, 무료 3화 이상을 기준으로 자동으로 고릅니다. 마음에 안 들면 빼면 됩니다.</span></p>' : '') + '</div>' +
       castHtml +
-      '<div class="card"><h2 style="margin:0"><button class="fold" data-act="toggleRec" aria-expanded="' + !!f.recOpen + '"><span class="fold-mark" aria-hidden="true">' + (f.recOpen ? '▾' : '▸') + '</span> CP 추천 작품 <span class="muted small">스튜디오지니 회신 11/17 · ' + Object.keys(P.recommended).length + '편</span></button></h2>' +
-        (!f.recOpen ? '</div>' : '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>작품</th><th>CP</th><th>반응 좋았던 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
-        '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>') +
+      '<div class="card"><h2 style="margin:0"><button class="fold" data-act="toggleRec" aria-expanded="' + !!f.recOpen + '"><span class="fold-mark" aria-hidden="true">' + (f.recOpen ? '▾' : '▸') + '</span> CP 추천 작품 <span class="muted small">스튜디오지니 11/17, 쇼박스 11/19 회신 · ' + Object.keys(P.recommended).length + '편</span></button></h2>' +
+        (!f.recOpen ? '</div>' : '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>작품</th><th>CP</th><th>추천 이유·쓸 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
+        '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를, 쇼박스 작품은 예고편과 스틸 이미지를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>') +
       '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편</span></h2>' +
         '<div class="filters"><input type="search" id="worksQ" placeholder="작품명·배우 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명·배우 검색">' +
           '<select data-chg="filterWorks" data-key="cp" aria-label="CP">' + opt('', 'CP 전체', f.cp) + cps.map((c) => opt(c, c, f.cp)).join('') + '</select>' +
