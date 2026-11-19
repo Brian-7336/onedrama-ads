@@ -225,5 +225,22 @@
     toast(list.map((x) => x.w.title).join(', ') + ' 골랐습니다');
   };
 
-  window.Playbook = { progress, profile, recs, status, keywords, fillTags, suggest };
+  // 광고 문구 추천. 제목은 가장 짧은 네이버 기준(15자), 설명은 45자 안에 맞춘다.
+  // 배우 이름은 CP 확인 전이라 넣지 않는다.
+  function adCopy(w) {
+    if (!w) return { headline: '깔 게 없는 숏드라마', desc: '원스토어 원드라마에서 앱 설치 없이 웹으로 바로 보는 숏드라마' };
+    const p = profile(w);
+    const free = p.d.free || 0;
+    const fit = (list, n) => list.find((x) => x.length <= n);
+    const t = w.title, tight = t.replace(/([,.!?])\s+/g, '$1'), none = t.replace(/\s+/g, '');
+    const headline = fit([t + ' ' + free + '화 무료', t + ' 무료', t, tight, none].filter((x) => free || !/무료$/.test(x)), 15) || t.slice(0, 15).replace(/\s+\S*$/, '').replace(/[\s,.:!?]+$/, '') + '…';   // 15자를 넘는 긴 제목은 낱말 단위로 줄인다
+    const kind = (p.genre ? p.genre + ' ' : '') + '숏드라마' + (p.fresh ? ' 신작' : '');
+    const desc = fit([
+      kind + '. ' + (free ? '1~' + free + '화 무료, ' : '') + '앱 설치 없이 웹에서 바로 재생',
+      kind + '. ' + (free ? '1~' + free + '화 무료, ' : '') + '설치 없이 바로 재생',
+    ], 45) || kind + '. 설치 없이 바로 재생';
+    return { headline, desc };
+  }
+
+  window.Playbook = { progress, profile, recs, status, keywords, fillTags, suggest, copy: adCopy };
 })();

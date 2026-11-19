@@ -105,7 +105,13 @@
     if (m.id === 'youtube') return id === 'v06' ? 'bumper' : id === 'v30a' ? 'instream' : 'shorts';
     return m.placements[0];
   }
-  const copyOf = (code) => reg().copy[code || 'common'] || {};
+  // 직접 쓴 문구가 없으면 추천 문구를 기본으로 쓴다. 칸을 비우면 추천으로 돌아간다.
+  const copySaved = (code) => reg().copy[code || 'common'] || {};
+  const copyOf = (code) => {
+    const c = copySaved(code);
+    const d = window.Playbook.copy(!code || code === 'common' ? null : S().works.find((w) => w.code === code));
+    return { headline: c.headline || d.headline, desc: c.desc || d.desc };
+  };
   const campaignName = (m) => P.campaign + '_' + m.id;
 
   function base(m, ph) {
@@ -233,10 +239,11 @@
 
     const copyRows = [{ code: 'common', title: '공통 (브랜드·장르 키워드 광고)' }].concat(works.map((w) => ({ code: w.code, title: w.code + ' ' + w.title })))
       .map((w) => {
-        const c = copyOf(w.code);
+        const c = copyOf(w.code), sv = copySaved(w.code);
+        const rec = (f) => (sv[f] ? '' : ' <span class="tag accent" title="직접 쓰면 그 문구를 쓰고, 칸을 비우면 추천으로 돌아갑니다">추천</span>');
         return '<tr><td>' + h(w.title) + '</td>' +
-          '<td><input type="text" style="width:100%;min-width:200px" value="' + h(c.headline || '') + '" data-chg="regCopy" data-code="' + h(w.code) + '" data-field="headline" placeholder="제목 (네이버 15자, 구글 30자)" aria-label="' + h(w.title) + ' 제목"> <span class="small muted">' + (c.headline || '').length + '자</span></td>' +
-          '<td><input type="text" style="width:100%;min-width:320px" value="' + h(c.desc || '') + '" data-chg="regCopy" data-code="' + h(w.code) + '" data-field="desc" placeholder="설명 (네이버 45자, 구글 90자)" aria-label="' + h(w.title) + ' 설명"> <span class="small muted">' + (c.desc || '').length + '자</span></td></tr>';
+          '<td><input type="text" style="width:100%;min-width:200px" value="' + h(c.headline || '') + '" data-chg="regCopy" data-code="' + h(w.code) + '" data-field="headline" placeholder="제목 (네이버 15자, 구글 30자)" aria-label="' + h(w.title) + ' 제목"> <span class="small muted">' + (c.headline || '').length + '자</span>' + rec('headline') + '</td>' +
+          '<td><input type="text" style="width:100%;min-width:320px" value="' + h(c.desc || '') + '" data-chg="regCopy" data-code="' + h(w.code) + '" data-field="desc" placeholder="설명 (네이버 45자, 구글 90자)" aria-label="' + h(w.title) + ' 설명"> <span class="small muted">' + (c.desc || '').length + '자</span>' + rec('desc') + '</td></tr>';
       }).join('');
 
     const mediaCards = P.media.map((m) => {
@@ -297,7 +304,7 @@
       '<div class="notice warn">파일의 열 이름은 매체 템플릿과 한 글자라도 다르면 무시된다. 처음 한 번은 각 매체에서 템플릿을 내려받아 「열 맞추기」에 첫 줄을 붙여 넣고, 광고 1~2개로 먼저 올려 본다.</div>' +
       '<div class="grid" style="grid-template-columns:repeat(' + counts.length + ',minmax(0,1fr))">' + counts.map((c) => '<div class="card stat"><div class="label">' + h(c[0]) + '</div><div class="value">' + c[1] + '</div></div>').join('') + '</div>' +
       '<div class="card"><h2>광고 문구 <span class="muted small">' + h(phase.name) + ' 기간 기준</span></h2><div class="tablewrap"><table><thead><tr><th>대상</th><th>제목</th><th>설명</th></tr></thead><tbody>' + copyRows + '</tbody></table></div>' +
-        '<p class="small muted" style="margin-top:8px">강점 메시지: 앱 설치 없이 웹에서 바로 재생. 과장 문구는 광고 반감 요인이니 피한다.</p></div>' +
+        '<p class="small muted" style="margin-top:8px">빈 칸에는 추천 문구가 기본으로 들어간다(네이버 15자·45자 기준). 고쳐 쓰면 그 문구를 쓴다. 강점 메시지: 앱 설치 없이 웹에서 바로 재생. 과장 문구는 광고 반감 요인이니 피한다.</p></div>' +
       mediaCards;
   };
 
