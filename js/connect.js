@@ -6,7 +6,7 @@
   const { h, toast } = window.UI;
   const S = () => Store.state;
   const cfg = () => { const s = S().settings; s.connect = s.connect || {}; return s.connect; };
-  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, yt: { token: '', channel: '', channelId: '', match: false, busy: false, log: [] } };
+  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, ig: { on: false, id: '', username: '', pageToken: '', match: false, busy: false, log: [] }, yt: { token: '', channel: '', channelId: '', match: false, busy: false, log: [] } };
   const ORIGIN = location.origin;
 
   const log = (k, msg, cls) => { st[k].log.push([new Date().toTimeString().slice(0, 8), msg, cls || '']); if (st[k].log.length > 60) st[k].log.shift(); window.App.render(true); };
@@ -25,7 +25,7 @@
     let res;
     if (method === 'POST') {
       const body = params instanceof FormData ? params : new URLSearchParams(Object.entries(params).map(([k, v]) => [k, typeof v === 'object' ? JSON.stringify(v) : String(v)]));
-      body.append('access_token', st.meta.token);
+      if (!body.has('access_token')) body.append('access_token', st.meta.token);
       res = await fetch(url, { method: 'POST', body });
     } else {
       const q = new URLSearchParams(Object.assign({ access_token: st.meta.token }, params || {}));
@@ -88,6 +88,111 @@
       log('meta', r.ad + ' 올렸습니다 (' + reg().assets[r.key] + ')', 'ok');
     }
     log('meta', '소재 올리기 끝: 새로 ' + up + '개, 이미 올린 것 ' + skip + '개, 사이트에 파일 없는 것 ' + miss + '개', 'ok');
+  }
+
+  // =====================================================================
+  // 인스타그램: 원드라마 공식 계정에 예고편을 릴스로 게시한다 (광고가 아니라 프로필에 남는 게시물).
+  // 영상 파일은 메타의 재개형 업로드(rupload.facebook.com)로 브라우저에서 바로 보낸다.
+  // =====================================================================
+  const IG_NAME = String(((P.sns.accounts.find((a) => a[0] === '인스타그램') || [])[1] || '').replace(/^@/, '')).toLowerCase();
+  const igTok = () => st.ig.pageToken || st.meta.token;
+  async function igAfterLogin() {
+    const pages = await graph('me/accounts', { fields: 'id,name,username,access_token,instagram_business_account{id,username}', limit: 100 });
+    const list = (pages.data || []).filter((p) => p.instagram_business_account);
+    const pg = list.find((p) => (p.instagram_business_account.username || '').toLowerCase() === IG_NAME) || list.find((p) => p.id === cfg().metaPage) || list[0];
+    if (!pg) throw new Error('인스타그램 프로페셔널 계정이 연결된 페이지가 없습니다. 인스타그램 계정을 비즈니스 계정으로 바꾸고 페이스북 페이지에 연결해 주세요');
+    st.ig.id = pg.instagram_business_account.id;
+    st.ig.username = pg.instagram_business_account.username || '';
+    st.ig.pageToken = pg.access_token || '';
+    st.ig.match = st.ig.username.toLowerCase() === IG_NAME;
+    st.ig.on = true;
+    log('ig', '인스타그램 계정 @' + st.ig.username + ' 을 찾았습니다' + (st.ig.match ? '' : ' (원드라마 공식 계정 @' + IG_NAME + ' 이 아닙니다)'), st.ig.match ? 'ok' : 'bad');
+  }
+  // 올릴 수 있는 영상: 작품의 원본 영상(예고편)과 만들어 둔 세로 영상.
+  function igChoices() {
+    const out = [];
+    S().works.forEach((w) => {
+      const src = (S().sources || {})[w.code];
+      if (src) out.push({ key: 'src|' + w.code, code: w.code, label: w.title + ' · 원본 영상 (' + src.name + ', ' + Math.round(src.dur) + '초)', type: /\.mp4$/i.test(src.name) ? 'video/mp4' : '', name: src.name, dur: src.dur, raw: true });
+      window.Calc.creativeIds(w.code).forEach((id) => {
+        const k = w.code + '_' + id, f = fileOf(k), T = window.Maker.target(k);
+        if (f && /^video\//.test(f.type || '') && T.H > T.W) out.push({ key: k, code: w.code, label: w.title + ' · ' + T.name + ' (' + window.Calc.short(k) + ')', type: f.type, name: f.name, dur: T.dur });
+      });
+    });
+    return out;
+  }
+  const igPick = () => { const list = igChoices(); return list.find((x) => x.key === cfg().igPick) || list[0] || null; };
+  // 캡션 기본값: 작품 소개, 무료 회차, 보는 곳, 출연자 계정, 해시태그.
+  function igCaptionDefault(code) {
+    const w = S().works.find((x) => x.code === code) || {};
+    const wd = (window.WORKS_DATA || []).find((x) => x.title === w.title && x.cp === w.cp) || {};
+    const cast = ((window.CAST || {})[w.title] || {}).cast || [];
+    const tags = [...new Set(cast.flatMap((c) => (c.links || []).map((l) => (/instagram\.com\/([A-Za-z0-9._]+)/i.exec(l[1]) || [])[1])).filter(Boolean).map((x) => '@' + x.replace(/\.$/, '')))];
+    const tname = String(w.title || '').replace(/[^0-9A-Za-z가-힣]/g, '');
+    const hash = ['원드라마', '숏드라마', '원스토어', /[A-Za-z가-힣]{2}/.test(tname) ? tname : '', wd.genre ? wd.genre.split(/[\/,·\s]/)[0] + '드라마' : ''].filter(Boolean);
+    return [
+      '「' + (w.title || '') + '」 예고편',
+      (wd.genre ? wd.genre + ' 숏드라마' : '숏드라마') + (wd.free ? ' · ' + (wd.free > 1 ? '1~' + wd.free + '화' : '1화') + ' 무료' : ''),
+      '',
+      '지금 원스토어 원드라마에서, 앱 설치 없이 바로 보세요.',
+      '프로필 링크에서 볼 수 있어요.',
+      tags.length ? '\n' + tags.join(' ') : '',
+      '',
+      [...new Set(hash)].map((x) => '#' + x).join(' '),
+    ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n');
+  }
+  const igCaption = (code) => { const c = (cfg().igCaption || {})[code]; return c == null ? igCaptionDefault(code) : c; };
+  async function igPublish() {
+    const pick = igPick();
+    if (!pick) throw new Error('올릴 영상이 없습니다. 소재 화면에서 원본 영상(예고편)을 먼저 넣어 주세요');
+    const blob = pick.raw ? await window.Assets.raw.get(pick.key) : await window.Assets.get(pick.key);
+    if (!blob) throw new Error('영상 파일을 찾지 못했습니다 (이 브라우저에 넣은 파일만 올릴 수 있습니다)');
+    const type = pick.type || blob.type || '';
+    if (!/mp4|quicktime/.test(type) && !/\.(mp4|mov)$/i.test(pick.name || '')) throw new Error('인스타그램은 MP4·MOV만 받습니다 (지금 파일: ' + (pick.name || type) + ')');
+    const caption = igCaption(pick.code);
+    log('ig', '게시 준비 중: ' + pick.label);
+    const box = await graph(st.ig.id + '/media', { media_type: 'REELS', upload_type: 'resumable', caption, share_to_feed: true, access_token: igTok() }, 'POST');
+    log('ig', '영상 보내는 중… (' + (blob.size / 1048576).toFixed(1) + 'MB)');
+    const up = await fetch('https://rupload.facebook.com/ig-api-upload/' + mver() + '/' + box.id, { method: 'POST', headers: { Authorization: 'OAuth ' + igTok(), offset: '0', file_size: String(blob.size) }, body: blob });
+    const uj = await up.json().catch(() => ({}));
+    if (!up.ok || uj.success === false || uj.debug_info) throw new Error('영상을 보내지 못했습니다: ' + ((uj.debug_info || {}).message || uj.message || 'HTTP ' + up.status));
+    log('ig', '영상을 보냈습니다. 인스타그램이 처리하는 중…');
+    for (let i = 0; ; i++) {
+      const stt = await graph(box.id, { fields: 'status_code,status', access_token: igTok() });
+      if (stt.status_code === 'FINISHED') break;
+      if (stt.status_code === 'ERROR' || stt.status_code === 'EXPIRED') throw new Error('인스타그램이 영상을 받지 않았습니다: ' + (stt.status || stt.status_code));
+      if (i >= 60) throw new Error('처리가 5분 넘게 걸립니다. 잠시 뒤 인스타그램 앱에서 올라갔는지 확인해 주세요');
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    const pub = await graph(st.ig.id + '/media_publish', { creation_id: box.id, access_token: igTok() }, 'POST');
+    let link = '';
+    try { link = (await graph(pub.id, { fields: 'permalink', access_token: igTok() })).permalink || ''; } catch (e) { /* 주소는 못 받아도 게시는 된 것 */ }
+    Store.update(() => { const c = cfg(); c.igPosts = c.igPosts || []; c.igPosts.unshift({ key: pick.key, label: pick.label, id: pub.id, link, at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' ') }); c.igPosts = c.igPosts.slice(0, 30); });
+    log('ig', '게시했습니다' + (link ? ': ' + link : ' (미디어 ID ' + pub.id + ')'), 'ok');
+  }
+  function igPanel() {
+    const c = cfg();
+    const posts = c.igPosts || [];
+    const history = posts.length ? '<details class="cguide"><summary>올린 기록 ' + posts.length + '건</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">' + posts.map((x) => '<li>' + h(x.at) + ' · ' + h(x.label) + (x.link ? ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">게시물 보기 ↗</a>' : '') + '</li>').join('') + '</ul></details>' : '';
+    let body;
+    if (!st.meta.token) body = '<p class="small muted" style="margin:0">위에서 「메타로 로그인」을 먼저 합니다.</p>';
+    else if (!st.ig.on) {
+      body = '<button class="primary" data-act="cnIgLogin"' + busyAttr('ig') + '>인스타그램 게시 권한 허용</button> <span class="small muted">메타 창에서 인스타그램 계정 @' + h(IG_NAME) + ' 과 연결된 페이지를 고르고 「콘텐츠 게시」를 허용합니다.</span>';
+    } else {
+      const list = igChoices(), pick = igPick();
+      body = '<p style="margin:0 0 8px">계정: <strong>@' + h(st.ig.username) + '</strong> ' + (st.ig.match ? '<span class="tag ok">원드라마 공식 계정 맞음</span>' : '<span class="tag bad">원드라마 공식 계정(@' + h(IG_NAME) + ')이 아님. 올릴 수 없습니다</span>') + '</p>' +
+        (list.length ? '<div class="filters"><label class="field">올릴 영상<select data-chg="cnIgPick">' + list.map((x) => '<option value="' + h(x.key) + '"' + (pick && x.key === pick.key ? ' selected' : '') + '>' + h(x.label) + '</option>').join('') + '</select></label></div>' +
+          '<label class="mf" style="margin-top:8px"><span>캡션 (고쳐 써도 된다. 비우면 캡션 없이 올라간다) <button class="link-btn" data-act="cnIgCaptionReset" data-code="' + h(pick.code) + '">추천 문구로</button></span><textarea rows="9" style="width:100%" data-chg="cnIgCaption" data-code="' + h(pick.code) + '">' + h(igCaption(pick.code)) + '</textarea></label>' +
+          '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgPublish"' + (st.ig.match ? '' : ' disabled') + busyAttr('ig') + '>릴스로 게시하기</button></div>' +
+          '<p class="small muted" style="margin:6px 0 0">누르면 확인 창이 한 번 뜨고, 바로 공개 게시됩니다(예약·비공개 없음). 세로 9:16, 3초~15분, MP4·MOV만 올라갑니다. 출연자 계정을 캡션에 쓰기 전에 소속사 확인이 끝났는지 봅니다.</p>'
+          : '<p class="small muted" style="margin:0">올릴 영상이 없습니다. <a href="#/creatives">소재 준비</a>에서 작품의 원본 영상(예고편)을 넣으면 여기에 나옵니다.</p>');
+    }
+    return '<div class="connect"><h3 style="margin-top:0">공식 인스타그램에 예고편 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h3>' +
+      '<details class="cguide"><summary>처음 한 번: 준비할 것</summary><ol>' +
+      '<li>인스타그램 @' + h(IG_NAME) + ' 이 프로페셔널(비즈니스) 계정이고, 페이스북 페이지 「원드라마」에 연결돼 있어야 한다.</li>' +
+      '<li>위에서 만든 메타 앱의 「사용 사례」에 인스타그램 콘텐츠 관리(<code>instagram_basic</code>, <code>instagram_content_publish</code>)를 추가한다.</li>' +
+      '<li>앱이 개발 모드여도 앱 관리자 본인이 관리하는 계정에는 심사 없이 올릴 수 있다.</li></ol></details>' +
+      body + history + logHtml('ig') + '</div>';
   }
 
   const POS = {
@@ -278,7 +383,7 @@
     return '<div class="connect"><h3 style="margin-top:0">로그인으로 영상 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h3>' + guide + body + logHtml('yt') + '</div>';
   }
 
-  const panel = (m) => (m.id === 'meta' ? metaPanel() : m.id === 'youtube' ? ytPanel() : '');
+  const panel = (m) => (m.id === 'meta' ? metaPanel() + igPanel() : m.id === 'youtube' ? ytPanel() : '');
 
   // 오래 걸리는 일을 돌리는 틀: 버튼을 잠그고, 끝나면 풀고, 오류는 기록한다.
   function job(k, fn) {
@@ -301,7 +406,7 @@
     }, { scope: 'ads_management,pages_show_list,pages_read_engagement' });
     return false;
   };
-  Actions.cnMetaLogout = () => { st.meta.token = ''; st.meta.accounts = []; st.meta.pages = []; if (window.FB) try { window.FB.logout(); } catch (e) { /* 이미 로그아웃 */ } };
+  Actions.cnMetaLogout = () => { st.meta.token = ''; st.meta.accounts = []; st.meta.pages = []; Object.assign(st.ig, { on: false, id: '', username: '', pageToken: '', match: false }); if (window.FB) try { window.FB.logout(); } catch (e) { /* 이미 로그아웃 */ } };
   Actions.cnMetaUpload = () => {
     const n = [...new Set(rowsOf('meta').filter((r) => fileOf(r.ad) && !reg().assets[r.key]).map((r) => r.ad))].length;
     if (!n) { toast('새로 올릴 소재가 없습니다'); return false; }
@@ -311,6 +416,26 @@
   Actions.cnMetaCreate = () => {
     if (!window.confirm('메타 광고 계정 ' + (cfg().metaAccount || '(미선택)') + ' 에 캠페인·광고 세트·광고를 「일시중지」 상태로 만듭니다. 돈은 나가지 않지만 계정에 실제로 만들어집니다. 계속할까요?')) return false;
     return job('meta', metaCreate);
+  };
+  // 인스타그램 게시 권한은 광고 권한과 따로 받는다 (앱에 권한이 없을 때 광고 로그인까지 막히지 않게).
+  Actions.cnIgLogin = () => {
+    if (!window.FB) { toast('먼저 메타로 로그인해 주세요'); return false; }
+    window.FB.login((r) => {
+      if (!r.authResponse) { log('ig', '권한을 허용하지 않았습니다', 'bad'); return; }
+      st.meta.token = r.authResponse.accessToken;
+      job('ig', igAfterLogin);
+    }, { scope: 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement' });
+    return false;
+  };
+  Actions.cnIgPick = (el) => Store.update(() => { cfg().igPick = el.value; });
+  Actions.cnIgCaption = (el) => { Store.update(() => { const c = cfg(); (c.igCaption = c.igCaption || {})[el.dataset.code] = el.value; }); return false; };
+  Actions.cnIgCaptionReset = (el) => Store.update(() => { const c = cfg(); if (c.igCaption) delete c.igCaption[el.dataset.code]; });
+  Actions.cnIgPublish = () => {
+    const pick = igPick();
+    if (!pick) { toast('올릴 영상이 없습니다'); return false; }
+    if (!st.ig.match) { toast('원드라마 공식 계정이 아니라 올릴 수 없습니다'); return false; }
+    if (!window.confirm('인스타그램 @' + st.ig.username + ' 에 아래 영상을 릴스로 「공개」 게시합니다. 올리면 팔로워와 누구나 볼 수 있습니다.\n\n' + pick.label + '\n\n계속할까요?')) return false;
+    return job('ig', igPublish);
   };
   Actions.cnYtLogin = () => {
     if (!(window.google && window.google.accounts)) return job('yt', async () => { await loadScript('https://accounts.google.com/gsi/client'); log('yt', '준비됐습니다. 「구글로 로그인」을 한 번 더 눌러 주세요'); });
@@ -324,5 +449,5 @@
     return job('yt', ytUpload);
   };
 
-  window.Connect = { panel, st, _test: { metaUpload, metaCreate, ytUpload, metaAfterLogin } };
+  window.Connect = { panel, st, _test: { metaUpload, metaCreate, ytUpload, metaAfterLogin, igAfterLogin, igPublish, igChoices, igCaptionDefault } };
 })();
