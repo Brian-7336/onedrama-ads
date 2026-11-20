@@ -68,7 +68,7 @@
     const me = sender || '[이름·소속·연락처]';
     const list = [];
     if (asks.portrait) list.push('광고 소재(예고편, 본편 일부, 포스터)에 배우의 이름과 얼굴이 나오는 데 문제가 없는지 확인 부탁드립니다.');
-    if (asks.tag) list.push('원드라마 공식 인스타그램 게시물에 배우 계정' + (tags ? '(' + tags + ')' : '') + '을 태그해도 되는지 확인 부탁드립니다.');
+    if (asks.tag) list.push('원드라마(' + P.sns.accounts[0][1] + ')와 원스토어(' + P.sns.onestore[0][1] + ') 공식 인스타그램 게시물에 배우 계정' + (tags ? '(' + tags + ')' : '') + '을 태그해도 되는지 확인 부탁드립니다.');
     if (asks.share) list.push('가능하다면 배우 또는 소속사 공식 계정에서 해당 게시물을 공유해 주시면 감사하겠습니다.');
     const what = asks.portrait ? '초상 사용 확인' : asks.tag ? '계정 태그 확인' : '게시물 공유';
     const subject = '[원스토어 원드라마] 「' + w.title + '」 12월 광고 관련 ' + names.join(', ') + ' 배우 ' + what + ' 요청';

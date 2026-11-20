@@ -615,7 +615,7 @@
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
-      '<div class="card"><h2>공식 SNS 연계 (사업TF)</h2>' + kv(P.sns.support) + '<h3>원드라마 계정</h3><div class="actions">' + P.sns.accounts.map((a) => ext(a[2], a[0] + ' ' + a[1])).join('') + '</div>' + '</div></div>' +
+      '<div class="card"><h2>공식 SNS 연계 (사업TF)</h2>' + kv(P.sns.support) + '<h3>원드라마 계정</h3><div class="actions">' + P.sns.accounts.map((a) => ext(a[2], a[0] + ' ' + a[1])).join('') + '</div><h3>원스토어 공식 계정</h3><div class="actions">' + P.sns.onestore.map((a) => ext(a[2], a[0] + ' ' + a[1])).join('') + '</div>' + '</div></div>' +
       '<div class="card"><h2>아직 정하지 않은 것</h2>' + P.openQuestions.map((q) => '<div class="check"><span class="t">' + h(q) + '</span></div>').join('') + '</div>' +
       '<div class="card"><h2>용어</h2>' + kv(P.glossary) + '</div>';
   };
