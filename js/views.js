@@ -320,7 +320,11 @@
     const cps = [...new Set(cands.map((w) => w.cp))];
     const genres = [...new Set(cands.map((w) => w.genre))];
     const q = f.q.trim().toLowerCase();
-    const list = cands.filter((w) => (!q || w.title.toLowerCase().includes(q) || castOf(w.title).some((c) => (c.name + ' ' + (c.group || '')).toLowerCase().includes(q))) && (!f.fan || hasFandom(w.title)) && (!f.new26 || isNew26(w.title)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
+    // 검색할 때는 아직 광고할 수 없는 작품(공개 보류 등)도 찾아서 상태를 보여 준다. 청불은 빼 둔다.
+    const pool = q ? WORKS_DATA.filter((w) => w.cand || w.rating !== '청불') : cands;
+    // 검색어가 있으면 체크·고르기 조건은 잠시 접어 두고 제목·배우 이름만으로 찾는다 (띄어쓰기는 무시).
+    const sq = q.replace(/\s+/g, ''), hay = (x) => String(x).toLowerCase().replace(/\s+/g, '');
+    const list = q ? pool.filter((w) => hay(w.title).includes(sq) || castOf(w.title).some((c) => hay(c.name + (c.group || '')).includes(sq))) : pool.filter((w) => (!f.fan || hasFandom(w.title)) && (!f.new26 || isNew26(w.title)) && (!f.cp || w.cp === f.cp) && (!f.genre || w.genre === f.genre) && (!f.trailer || w.trailer) && (!f.free3 || (w.free || 0) >= 3) && (!f.rec || P.recommended[w.title]));
     if (f.sort === 'new') list.sort((a, b) => ((relOf(b.title) || {}).d || '').localeCompare((relOf(a.title) || {}).d || ''));
     const full = picked.length >= 5;
     const recRows = Object.keys(P.recommended).map((title) => {
@@ -352,7 +356,7 @@
       '<div class="card"><h2 style="margin:0"><button class="fold" data-act="toggleRec" aria-expanded="' + !!f.recOpen + '"><span class="fold-mark" aria-hidden="true">' + (f.recOpen ? '▾' : '▸') + '</span> CP 추천 작품 <span class="muted small">스튜디오지니 11/17, 쇼박스 11/19 회신 · ' + Object.keys(P.recommended).length + '편</span></button></h2>' +
         (!f.recOpen ? '</div>' : '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>작품</th><th>CP</th><th>추천 이유·쓸 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
         '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를, 쇼박스 작품은 예고편과 스틸 이미지를 홍보에 써도 된다. 공개 보류 작품은 지금 광고할 수 없다.</p></div>') +
-      '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편</span></h2>' +
+      '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편' + (q ? ' · 검색 중에는 아래 조건을 적용하지 않고, 아직 광고할 수 없는 작품도 함께 보여 줍니다' : '') + '</span></h2>' +
         '<div class="filters"><input type="search" id="worksQ" placeholder="작품명·배우 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명·배우 검색">' +
           '<select data-chg="filterWorks" data-key="cp" aria-label="CP">' + opt('', 'CP 전체', f.cp) + cps.map((c) => opt(c, c, f.cp)).join('') + '</select>' +
           '<select data-chg="filterWorks" data-key="genre" aria-label="장르">' + opt('', '장르 전체', f.genre) + genres.map((c) => opt(c, c, f.genre)).join('') + '</select>' +
@@ -366,7 +370,7 @@
           (list.length ? list.map((w) => {
             const on = pickedTitles.has(w.cp + '|' + w.title);
             return '<tr><td>' + h(w.title) + (P.recommended[w.title] ? ' <span class="tag accent" title="' + h(P.recommended[w.title]) + '">CP 추천</span>' : '') + '</td><td>' + h(w.cp) + '</td><td>' + h(w.genre) + '</td><td>' + h(w.rating) + '</td><td class="num">' + n(w.eps) + '</td><td class="num">' + (w.free == null ? '–' : w.free) + '</td><td>' + (w.trailer ? '<span class="tag ok">있음</span>' : '') + '</td><td>' + relCell(w.title) + '</td><td class="wrap" style="min-width:200px">' + (castNames(w.title) ? castNames(w.title) + ' <button class="link-btn" data-act="toggleCast" data-title="' + h(w.title) + '" aria-expanded="' + (f.open === w.title) + '">' + (f.open === w.title ? '접기' : '채널 보기') + '</button>' : '<span class="muted small">–</span>') + '</td>' +
-              '<td class="num">' + (on ? '<span class="tag accent">고름</span>' : '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(w.title) + '"' + (full ? ' disabled title="5편까지 고를 수 있습니다"' : '') + '>고르기</button>') + '</td></tr>' +
+              '<td class="num">' + (!w.cand ? '<span class="tag bad" title="상용 등록이 되면 고를 수 있습니다">' + h(w.status || '광고 불가') + '</span>' : on ? '<span class="tag accent">고름</span>' : '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(w.title) + '"' + (full ? ' disabled title="5편까지 고를 수 있습니다"' : '') + '>고르기</button>') + '</td></tr>' +
               (f.open === w.title ? '<tr class="detail-row"><td colspan="10">' + castDetail(w.title) + '</td></tr>' : '');
           }).join('') : '<tr><td colspan="10" class="empty">조건에 맞는 작품이 없습니다</td></tr>') +
         '</tbody></table></div></div>';
