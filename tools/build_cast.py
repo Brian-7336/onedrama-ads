@@ -1,7 +1,7 @@
 # 출연 배우·팬 채널 자료를 엑셀과 js/cast-data.js 로 만든다.
 # 기준은 CP 납품 메타(<폴더>/meta.json, tools/read_meta.py 가 만든다)이고, 메타에 없는 것만 웹 조사 결과로 채운다.
 # 사용: python tools/build_cast.py <조사 결과 폴더>
-import json, sys, os, glob, re
+import json, sys, os, glob, re, io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -33,6 +33,13 @@ for x in load('result_*.json'):
 for x in load('r2_result_*.json'):       # 2차 조사는 찾은 경우에만 덮어쓴다
     if x.get('title') in works and (ok(x) or not ok(works[x['title']])):
         works[x['title']] = x
+
+# 웹 조사를 하지 않은 작품(공개 보류 등)도 CP 메타가 있으면 넣는다. 청불은 광고 대상이 아니라 뺀다.
+_wd = io.open(os.path.join(root, 'js', 'works-data.js'), encoding='utf-8').read()
+for w in json.JSONDecoder().raw_decode(_wd[_wd.index('['):])[0]:
+    if w['title'] not in works and w.get('rating') != '청불':
+        works[w['title']] = {'cp': w['cp'], 'title': w['title'], 'found': False, 'cast': [], 'meta_only': True}
+        order.append(w['title'])
 
 # ---------- CP 납품 메타를 기준으로 덮어쓴다 ----------
 def norm(t):
@@ -112,6 +119,21 @@ for t in order:
             c['instagram'] = ' '.join(urls)           # 메타의 계정을 우선한다
         c['sources'] = ['CP 납품 메타: ' + m['file']] + [u for u in w.get('sources', [])][:2]
         cast.append(c)
+    # 같은 제목의 메타가 다른 CP 폴더에도 있으면(같은 작품을 두 곳에서 납품) 거기에만 적힌 배우를 더한다.
+    have = {norm(re.sub(r'\(.*?\)', '', c['name'])) for c in cast}
+    for m2 in {id(v): v for (cp2, k2), v in meta.items() if cp2 not in ('*', x['cp']) and k2 == norm(x['title'])}.values():
+        for a in m2.get('cast', []):
+            name = re.sub(r'\s*\n\s*', ' ', a['name']).strip()
+            if norm(re.sub(r'\(.*?\)', '', name)) in have:
+                continue
+            have.add(norm(re.sub(r'\(.*?\)', '', name)))
+            urls = insta_urls(a.get('sns', ''))
+            c = {'name': name, 'character': a.get('character', ''), 'role': next((v for k, v in KIND if k in a.get('kind', '')), '출연'),
+                 'role_src': '메타' if any(k in a.get('kind', '') for k, v in KIND) else '', 'confidence': 'high', 'source': 'CP 메타',
+                 'portrait': a.get('portrait', '').replace('\n', ' ').strip(), 'sns_raw': a.get('sns', '').replace('\n', ' '), 'sources': ['CP 납품 메타: ' + m2['file']]}
+            if urls:
+                c['instagram'] = ' '.join(urls)
+            cast.append(c)
     extra = len(web)                                  # 웹 조사에만 있던 사람은 뺀다 (메타가 기준)
     # 웹 조사 출연진이 메타와 한 명도 안 겹치면 웹 조사가 다른 작품을 본 것이다. 그 작품의 웹 출시일도 믿지 않는다.
     x['web_mismatch'] = bool(x.get('cast')) and extra == len(x.get('cast', []))
@@ -290,7 +312,13 @@ for line in [
 ws.column_dimensions['A'].width = 130
 
 out = os.path.join(root, '원드라마_출연배우_팬채널.xlsx')
-wb.save(out)
+try:
+    wb.save(out)
+except PermissionError:
+    # 엑셀에서 열어 둔 채면 덮어쓸 수 없다. 옆에 새 이름으로 남긴다.
+    out = os.path.join(root, '원드라마_출연배우_팬채널_새로만듦.xlsx')
+    wb.save(out)
+    print('엑셀 파일이 열려 있어 따로 저장:', os.path.basename(out))
 
 # 사이트용: 작품명 → 배우 목록 (공개 채널만)
 keys = ['name', 'role', 'lead', 'character', 'group', 'agency', 'fanclub', 'confidence', 'source']
