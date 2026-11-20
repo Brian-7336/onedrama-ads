@@ -22,6 +22,15 @@
   const r1 = (x) => Math.round(x * 10) / 10;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
+  // 끝 화면 버튼 글자: 콘텐츠 목록 문서에 적힌 무료 회차 수를 쓴다. 값이 없으면 「지금 보러가기」.
+  function freeText(code) {
+    const w = Store.state.works.find((x) => x.code === code) || {};
+    const wd = (window.WORKS_DATA || []).find((x) => x.title === w.title && x.cp === w.cp) || {};
+    const n = +wd.free || 0;
+    return n > 1 ? '1~' + n + '화 무료로 보기' : n === 1 ? '1화 무료로 보기' : '지금 보러가기';
+  }
+  const AUTO_BENEFIT = /^(1~\d+화|1화) 무료(로 보기)?$|^지금 보러가기$/;
+
   // 소재 칸이 요구하는 크기·길이
   function target(key) {
     const id = key.split('_')[1];
@@ -237,7 +246,7 @@
       poster: true, posterTitle: true,
       src: 'src|' + code, segs: [seg], at: r1(clamp(base15[0] + ({ im01: 2, im02: 6, bn01: 10 }[T.id] || 3), 0, Math.max(0, src.dur - 0.2))),
       fit: 'auto', pos: 50, genre: wd.genre || '', title: w.title || '', sub: '', hook: '',
-      cta1: FORM.cta1, cta2: FORM.cta2, benefit: wd.free ? '1~' + wd.free + '화 무료로 보기' : '지금 보러가기', end: L <= 6 ? 1.6 : 3.2, fmt: 2,
+      cta1: FORM.cta1, cta2: FORM.cta2, benefit: freeText(code), end: L <= 6 ? 1.6 : 3.2, fmt: 2,
     };
   }
 
@@ -314,6 +323,20 @@
     }
     return { lines: lines.slice(0, 2), size: sz };
   }
+  // 포스터 가장자리를 투명하게 풀어 준 그림. 한 번 만들어 두고 다시 쓴다.
+  function feathered(m, im, w, h, tall) {
+    const key = w + 'x' + h + (tall ? 't' : 'w');
+    if (m._pf && m._pf.key === key && m._pf.im === im) return m._pf.cv;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d');
+    c.drawImage(im, 0, 0, w, h);
+    c.globalCompositeOperation = 'destination-in';
+    const fade = (x0, y0, x1, y1, stops) => { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach((st) => g.addColorStop(st[0], 'rgba(0,0,0,' + st[1] + ')')); c.fillStyle = g; c.fillRect(0, 0, w, h); };
+    fade(0, 0, w, 0, [[0, 0], [0.12, 1], [0.88, 1], [1, 0]]);                              // 좌우
+    fade(0, 0, 0, h, tall ? [[0, 1], [0.93, 1], [1, 0]] : [[0, 0], [0.08, 1], [0.92, 1], [1, 0]]);   // 위아래 (세로 화면은 위가 화면 끝이라 아래만)
+    m._pf = { key, im, cv };
+    return cv;
+  }
   // e: 끝 화면이 시작된 뒤 지난 시간(초). 참조 영상은 3.2초짜리라, 더 짧으면 같은 비율로 빨라진다.
   function drawEnd(ctx, T, m, r, e, end, U) {
     const W = T.W, H = T.H, tall = H >= W * 1.2;
@@ -337,20 +360,26 @@
       ctx.fillStyle = g; ctx.fillRect(0, H * 0.36, W, H * 0.24 + 1);
       ctx.fillStyle = FORM.bg; ctx.fillRect(0, H * 0.6, W, H * 0.4);
     } else if (po) {
-      // 제목이 든 포스터(또는 가로·정사각 화면): 포스터를 통째로 보여 주고 글자는 그 아래(가로는 오른쪽)에 둔다.
-      const box = tall ? [W * 0.5, H * 0.03, W * 0.94, H * 0.66] : [W * 0.22, H * 0.07, W * 0.36, H * 0.86];
-      const s0 = Math.min(box[2] / pw, box[3] / ph), dw = pw * s0, dh = ph * s0, x = box[0] - dw / 2, y = box[1] + (tall ? 0 : (box[3] - dh) / 2);
+      // 제목이 든 포스터(또는 가로·정사각 화면): 포스터를 제목까지 그대로 보여 주고,
+      // 테두리 없이 가장자리를 흐려 바탕에 자연스럽게 녹인다. 글자는 그 아래(가로는 오른쪽)에 둔다.
+      const box = tall ? [W * 0.5, 0, W * 0.78, H * 0.76] : [W * 0.23, H * 0.03, W * 0.42, H * 0.94];
+      const s0 = Math.min(box[2] / pw, box[3] / ph), dw = Math.round(pw * s0), dh = Math.round(ph * s0), x = box[0] - dw / 2, y = box[1] + (tall ? 0 : (box[3] - dh) / 2);
       // 뒤에는 같은 포스터를 흐리고 어둡게 깔아 빈 곳을 채운다.
-      ctx.save(); ctx.filter = 'blur(' + Math.round(40 * U) + 'px)'; ctx.globalAlpha = 0.35;
-      const sb = Math.max(W / pw, H / ph); ctx.drawImage(po, (W - pw * sb) / 2, (H - ph * sb) / 2, pw * sb, ph * sb);
+      ctx.save(); ctx.filter = 'blur(' + Math.round(40 * U) + 'px)'; ctx.globalAlpha = 0.4;
+      const sb = Math.max(W / pw, H / ph) * 1.08; ctx.drawImage(po, (W - pw * sb) / 2, (H - ph * sb) / 2, pw * sb, ph * sb);
       ctx.restore();
-      const g = ctx.createLinearGradient(0, H * 0.5, 0, H);
-      g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(tall ? 0.45 : 1, tall ? FORM.bg : 'rgba(8,8,12,.6)');
-      ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W, H * 0.5);
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40 * U; ctx.shadowOffsetY = 12 * U;
-      ctx.fillStyle = '#000'; ctx.fillRect(x, y, dw, dh); ctx.restore();
-      ctx.drawImage(po, x, y, dw, dh);
-      if (!tall) { cx = W * 0.7; mw = W * 0.56; }
+      ctx.drawImage(feathered(m, po, dw, dh, tall), x, y);
+      if (tall) {
+        const g = ctx.createLinearGradient(0, H * 0.7, 0, H * 0.8);
+        g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(1, 'rgba(8,8,12,.9)');
+        ctx.fillStyle = g; ctx.fillRect(0, H * 0.7, W, H * 0.1 + 1);
+        ctx.fillStyle = 'rgba(8,8,12,.9)'; ctx.fillRect(0, H * 0.8, W, H * 0.2);
+      } else {
+        const g = ctx.createLinearGradient(W * 0.4, 0, W * 0.6, 0);
+        g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(1, 'rgba(8,8,12,.7)');
+        ctx.fillStyle = g; ctx.fillRect(W * 0.4, 0, W * 0.6, H);
+        cx = W * 0.72; mw = W * 0.54;
+      }
     }
 
     // 글자 묶음: 제목(1~2줄) → 지금 원스토어에서 → 로고 → 작은 문구 → 버튼. 간격은 참조 영상에서 잰 값.
@@ -361,8 +390,9 @@
     const items = [];
     tl.lines.forEach((l, i) => items.push({ k: 'title', text: l, gap: i ? 129 * u * (tl.size / (94 * u)) : 0 }));
     if (r.cta2) items.push({ k: 'c2', gap: items.length ? 136 * u : 0 });
-    items.push({ k: 'logo', gap: items.length ? 125 * u : 0 });
-    if (tag) items.push({ k: 'tag', gap: (r.benefit ? 127 : 110) * u });
+    const tight = baked && tall;
+    items.push({ k: 'logo', gap: items.length ? (tight ? 108 : 125) * u : 0 });
+    if (tag) items.push({ k: 'tag', gap: (tight ? 104 : r.benefit ? 127 : 110) * u });
     if (r.benefit) items.push({ k: 'cta', gap: (tag ? 72 : 140) * u });
     const span = items.reduce((x, it) => x + it.gap, 0);
     // 세로: 버튼이 참조 영상과 같은 높이(91.8%)에 오게 아래에서부터 쌓는다. 가로: 세로 가운데.
@@ -751,11 +781,11 @@
     const code = codeOf(k), T = target(k), src = sources()[code];
     const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit));
     r.poster = r.poster !== false;
+    // 버튼 글자를 손으로 고치지 않았으면 문서의 무료 회차 수로 다시 맞춘다.
+    if (T.kind === 'video' && (!r.benefit || AUTO_BENEFIT.test(r.benefit))) r.benefit = freeText(code);
     if (T.kind === 'video' && r.fmt !== 2) {
       if (r.posterTitle == null) r.posterTitle = true;
       if (r.cta1 === '깔 게 없는 숏드라마,') r.cta1 = FORM.cta1;
-      if (/화 무료$/.test(r.benefit || '')) r.benefit += '로 보기';
-      if (!r.benefit) r.benefit = '지금 보러가기';
       const L = (T.dur || 15); r.end = L <= 6 ? 1.6 : Math.max(r.end || 0, 3.2);
       r.fmt = 2;
     }
