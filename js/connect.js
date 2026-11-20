@@ -108,12 +108,13 @@
     st.ig.on = true;
     log('ig', '인스타그램 계정 @' + st.ig.username + ' 을 찾았습니다' + (st.ig.match ? '' : ' (원드라마 공식 계정 @' + IG_NAME + ' 이 아닙니다)'), st.ig.match ? 'ok' : 'bad');
   }
-  // 올릴 수 있는 영상: 「소재 준비」에서 우리 형식으로 만든 공식 계정용 예고편.
-  function igChoices() {
-    const sns = S().sns || {};
-    return S().works.filter((w) => sns[w.code]).map((w) => { const f = sns[w.code]; return { key: 'sns|' + w.code, code: w.code, label: w.title + ' · 공식 계정용 예고편 (' + f.dur + '초, ' + f.at + ' 만듦)', type: f.type, name: f.name, dur: f.dur }; });
+  // 올릴 작품: 게시 칸에서 고른 작품. 올릴 영상은 그 작품으로 만든 공식 계정용 예고편.
+  const igWork = () => { const ws = S().works; return ws.find((w) => w.code === cfg().igWork) || ws[0] || null; };
+  function igPick() {
+    const w = igWork(), r = w && window.Maker.snsReady(w.code);
+    return r ? { key: 'sns|' + w.code, code: w.code, label: w.title + ' · 공식 계정용 예고편 (' + r.file.dur + '초, ' + r.file.at + ' 만듦)', type: r.file.type, name: r.file.name, dur: r.file.dur, stale: r.stale } : null;
   }
-  const igPick = () => { const list = igChoices(); return list.find((x) => x.key === cfg().igPick) || list[0] || null; };
+  const igChoices = () => { const x = igPick(); return x ? [x] : []; };
   // 캡션 기본값: 작품 소개, 무료 회차, 보는 곳, 출연자 계정, 해시태그.
   function igCaptionDefault(code) {
     const w = S().works.find((x) => x.code === code) || {};
@@ -164,27 +165,32 @@
   }
   function igPanel() {
     const c = cfg();
+    const works = S().works;
     const posts = c.igPosts || [];
-    const history = posts.length ? '<details class="cguide"><summary>올린 기록 ' + posts.length + '건</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">' + posts.map((x) => '<li>' + h(x.at) + ' · ' + h(x.label) + (x.link ? ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">게시물 보기 ↗</a>' : '') + '</li>').join('') + '</ul></details>' : '';
-    let body;
-    if (!st.ig.on) {
-      body = '<div class="filters"><label class="field">메타 앱 ID<input type="text" inputmode="numeric" style="width:200px" value="' + h(c.metaAppId || '') + '" data-chg="cnSet" data-key="metaAppId" placeholder="숫자 15~16자리"></label></div>' +
-        '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgLogin"' + (c.metaAppId ? '' : ' disabled') + busyAttr('ig') + '>메타로 로그인하고 게시 권한 허용</button> <span class="small muted">' + (c.metaAppId ? '메타 창에서 인스타그램 계정 @' + h(IG_NAME) + ' 과 연결된 페이지를 고르고 「콘텐츠 게시」를 허용합니다. 비밀번호는 메타 창에만 입력됩니다.' : '앱 ID를 넣으면 눌러집니다. 앱 만드는 법은 <a href="#/register">광고 등록</a>의 메타 칸에 있습니다.') + '</span></div>';
+    const history = posts.length ? '<details class="cguide" style="margin-top:12px"><summary>올린 기록 ' + posts.length + '건</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">' + posts.map((x) => '<li>' + h(x.at) + ' · ' + h(x.label) + (x.link ? ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">게시물 보기 ↗</a>' : '') + '</li>').join('') + '</ul></details>' : '';
+    const open = '<div class="card" id="igpost"><h2>공식 인스타그램에 예고편 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h2>';
+    if (!works.length) return open + '<div class="empty">먼저 <a href="#/works">작품</a>을 골라 주세요.</div></div>';
+    const w = igWork(), pick = igPick();
+    const step = (n, title, body, done) => '<div class="igstep' + (done ? ' done' : '') + '"><h3><span class="num">' + n + '</span> ' + title + '</h3>' + body + '</div>';
+    let s4;
+    if (!pick) s4 = '<p class="muted" style="margin:0">③까지 끝나면 여기서 올립니다.</p>';
+    else if (!st.ig.on) {
+      s4 = '<details class="cguide"' + (c.metaAppId ? '' : ' open') + '><summary>처음 한 번: 준비할 것</summary><ol>' +
+        '<li>인스타그램 @' + h(IG_NAME) + ' 이 프로페셔널(비즈니스) 계정이고, 페이스북 페이지 「원드라마」에 연결돼 있어야 한다.</li>' +
+        '<li>메타 앱(광고 올리기에 쓰는 것과 같은 앱)의 「사용 사례」에 인스타그램 콘텐츠 관리(<code>instagram_basic</code>, <code>instagram_content_publish</code>)를 추가한다. 앱 만드는 법은 <a href="#/register">광고 등록</a>의 메타 칸에 있다.</li>' +
+        '<li>앱이 개발 모드여도 앱 관리자 본인이 관리하는 계정에는 심사 없이 올릴 수 있다.</li></ol></details>' +
+        '<div class="filters"><label class="field">메타 앱 ID<input type="text" inputmode="numeric" style="width:200px" value="' + h(c.metaAppId || '') + '" data-chg="cnSet" data-key="metaAppId" placeholder="숫자 15~16자리"></label></div>' +
+        '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgLogin"' + (c.metaAppId ? '' : ' disabled') + busyAttr('ig') + '>메타로 로그인하고 게시 권한 허용</button> <span class="small muted">' + (c.metaAppId ? '메타 창에서 인스타그램 계정 @' + h(IG_NAME) + ' 과 연결된 페이지를 고르고 「콘텐츠 게시」를 허용합니다. 비밀번호는 메타 창에만 입력됩니다.' : '앱 ID를 넣으면 눌러집니다.') + '</span></div>';
     } else {
-      const list = igChoices(), pick = igPick();
-      body = '<p style="margin:0 0 8px">계정: <strong>@' + h(st.ig.username) + '</strong> ' + (st.ig.match ? '<span class="tag ok">원드라마 공식 계정 맞음</span>' : '<span class="tag bad">원드라마 공식 계정(@' + h(IG_NAME) + ')이 아님. 올릴 수 없습니다</span>') + '</p>' +
-        (list.length ? '<div class="filters"><label class="field">올릴 영상<select data-chg="cnIgPick">' + list.map((x) => '<option value="' + h(x.key) + '"' + (pick && x.key === pick.key ? ' selected' : '') + '>' + h(x.label) + '</option>').join('') + '</select></label></div>' +
-          '<label class="mf" style="margin-top:8px"><span>캡션 (고쳐 써도 된다. 비우면 캡션 없이 올라간다) <button class="link-btn" data-act="cnIgCaptionReset" data-code="' + h(pick.code) + '">추천 문구로</button></span><textarea rows="9" style="width:100%" data-chg="cnIgCaption" data-code="' + h(pick.code) + '">' + h(igCaption(pick.code)) + '</textarea></label>' +
-          '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgPublish"' + (st.ig.match ? '' : ' disabled') + busyAttr('ig') + '>릴스로 게시하기</button></div>' +
-          '<p class="small muted" style="margin:6px 0 0">누르면 확인 창이 한 번 뜨고, 바로 공개 게시됩니다(예약·비공개 없음). 세로 9:16, 3초~15분, MP4·MOV만 올라갑니다. 출연자 계정을 캡션에 쓰기 전에 소속사 확인이 끝났는지 봅니다.</p>'
-          : '<p class="small muted" style="margin:0">올릴 영상이 없습니다. 위 작품 칸의 「공식 계정용 예고편」에서 「만들기」를 누르면 여기에 나옵니다.</p>') + '<div class="actions" style="margin-top:8px"><button class="link-btn" data-act="cnIgLogout">로그아웃</button></div>';
+      s4 = '<p style="margin:0 0 8px">계정: <strong>@' + h(st.ig.username) + '</strong> ' + (st.ig.match ? '<span class="tag ok">원드라마 공식 계정 맞음</span>' : '<span class="tag bad">원드라마 공식 계정(@' + h(IG_NAME) + ')이 아님. 올릴 수 없습니다</span>') + ' <button class="link-btn" data-act="cnIgLogout">로그아웃</button></p>' +
+        '<p style="margin:0 0 8px">올릴 영상: <strong>' + h(pick.label) + '</strong>' + (pick.stale ? ' <span class="tag warn">②에서 바꾼 내용이 아직 반영되지 않은 영상입니다</span>' : '') + '</p>' +
+        '<label class="mf"><span>캡션 (고쳐 써도 된다. 비우면 캡션 없이 올라간다) <button class="link-btn" data-act="cnIgCaptionReset" data-code="' + h(pick.code) + '">추천 문구로</button></span><textarea rows="9" style="width:100%" data-chg="cnIgCaption" data-code="' + h(pick.code) + '">' + h(igCaption(pick.code)) + '</textarea></label>' +
+        '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgPublish"' + (st.ig.match ? '' : ' disabled') + busyAttr('ig') + '>릴스로 게시하기</button></div>' +
+        '<p class="small muted" style="margin:6px 0 0">누르면 확인 창이 한 번 뜨고, 바로 공개 게시됩니다(예약·비공개 없음). 세로 9:16, 3초~15분, MP4·MOV만 올라갑니다. 출연자 계정을 캡션에 쓰기 전에 소속사 확인이 끝났는지 봅니다.</p>';
     }
-    return '<div class="card" id="igpost"><h2>공식 인스타그램에 예고편 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h2><div class="connect" style="margin:0">' +
-      '<details class="cguide"><summary>처음 한 번: 준비할 것</summary><ol>' +
-      '<li>인스타그램 @' + h(IG_NAME) + ' 이 프로페셔널(비즈니스) 계정이고, 페이스북 페이지 「원드라마」에 연결돼 있어야 한다.</li>' +
-      '<li>메타 앱(광고 올리기에 쓰는 것과 같은 앱)의 「사용 사례」에 인스타그램 콘텐츠 관리(<code>instagram_basic</code>, <code>instagram_content_publish</code>)를 추가한다.</li>' +
-      '<li>앱이 개발 모드여도 앱 관리자 본인이 관리하는 계정에는 심사 없이 올릴 수 있다.</li></ol></details>' +
-      body + history + logHtml('ig') + '</div></div>';
+    return open +
+      '<div class="filters" style="margin-bottom:12px"><label class="field">작품<select data-chg="cnIgWork">' + works.map((x) => '<option value="' + h(x.code) + '"' + (x.code === w.code ? ' selected' : '') + '>' + h(x.title) + '</option>').join('') + '</select></label></div>' +
+      window.Maker.snsPanel(w.code) + step(4, '인스타그램에 올리기', s4, false) + history + logHtml('ig') + '</div>';
   }
 
   const POS = {
@@ -420,7 +426,7 @@
     return false;
   };
   Actions.cnIgLogout = () => { Object.assign(st.ig, { on: false, token: '', id: '', username: '', pageToken: '', match: false }); };
-  Actions.cnIgPick = (el) => Store.update(() => { cfg().igPick = el.value; });
+  Actions.cnIgWork = (el) => Store.update(() => { cfg().igWork = el.value; });
   Actions.cnIgCaption = (el) => { Store.update(() => { const c = cfg(); (c.igCaption = c.igCaption || {})[el.dataset.code] = el.value; }); return false; };
   Actions.cnIgCaptionReset = (el) => Store.update(() => { const c = cfg(); if (c.igCaption) delete c.igCaption[el.dataset.code]; });
   Actions.cnIgPublish = () => {

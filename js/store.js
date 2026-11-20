@@ -17,6 +17,8 @@
       castAgency: {},      // '작품 제목|배우' → 직접 입력한 소속사 이름
       outreach: {},        // '작품 코드|소속사' → 연락 기록 {status, date, note, asks, subject, body}
       sns: {},             // 작품 코드 → 공식 계정용 예고편 {name, size, type, w, h, dur, at}. 파일 자체는 IndexedDB에 있다
+      snsSrc: {},          // 작품 코드 → 공식 계정용으로 따로 고른 예고편 파일 정보 {name, size, w, h, dur}
+      snsEdit: {},         // 작품 코드 → 공식 계정용 예고편의 편집 값 (손으로 고친 것만)
       flowSeen: {},        // 읽기만 하는 단계를 열어 봤는지 {playbook: true, links: true}
       reports: [],         // [{id, date, media, work, creative, imp, clk, start, ep3, pay, cost}]
       settings: { ytMedium: 'paid_video', daily: {}, accounts: {} }, // accounts: 바로가기에 쓸 계정 (이 브라우저에만 저장)

@@ -35,7 +35,7 @@
   function target(key) {
     const id = key.split('_')[1];
     if (id === 'sns') {
-      const src = sources()[codeOf(key)] || {};
+      const src = (snsSource(codeOf(key)) || {}).info || {};
       const wide = (src.w || 0) > (src.h || 0);
       return { id, W: wide ? 1920 : 1080, H: wide ? 1080 : 1920, kind: 'video', dur: src.dur || 0, name: '공식 계정용 예고편' };
     }
@@ -693,35 +693,97 @@
   // 원본 영상(예고편)을 자르지 않고 통째로 우리 형식(오른쪽 위 로고, 자막, 뒤에 끝 화면 3.2초)으로 만든다.
   // 광고 소재 칸과 따로 보관한다 (파일: IndexedDB 'sns|작품 코드', 정보: state.sns).
   const SNS_TAIL = 3.2;
-  function snsRecipe(code) {
-    const w = Store.state.works.find((x) => x.code === code) || {};
+  // 쓸 파일: 게시 칸에서 따로 고른 파일이 있으면 그것, 없으면 작품의 원본 영상.
+  function snsSource(code) {
+    const own = (Store.state.snsSrc || {})[code];
+    if (own) return { key: 'snssrc|' + code, info: own, picked: true };
     const src = sources()[code];
+    return src ? { key: 'src|' + code, info: src, picked: false } : null;
+  }
+  // 편집 값: 손으로 고친 것(state.snsEdit)이 있으면 그것, 없으면 기본값.
+  function snsEdit(code) {
+    const w = Store.state.works.find((x) => x.code === code) || {};
+    const e = (Store.state.snsEdit || {})[code] || {};
+    const src = snsSource(code);
+    const canSubs = !!subsOf(code);
     return {
-      src: 'src|' + code, segs: [[0, src.dur]], tail: SNS_TAIL, end: SNS_TAIL, fit: 'cover', pos: 50,
-      subsOn: true, cues: cuesFor(code, 0, src.dur), poster: true, posterTitle: true,
-      genre: '', title: w.title || '', sub: '', hook: '', cta1: FORM.cta1, cta2: FORM.cta2, benefit: freeText(code), fmt: 2,
+      title: e.title != null ? e.title : (w.title || ''),
+      cta1: e.cta1 != null ? e.cta1 : FORM.cta1,
+      benefit: e.benefit != null ? e.benefit : freeText(code),
+      // 자막 파일은 작품의 원본 영상에 맞춘 것이라, 따로 고른 파일에는 기본으로 넣지 않는다.
+      subsOn: canSubs && (e.subsOn != null ? e.subsOn : !(src && src.picked)),
+      posterTitle: e.posterTitle != null ? e.posterTitle : true,
+      end: e.end != null ? e.end : SNS_TAIL,
+      canSubs,
     };
   }
-  function snsRow(code) {
-    const src = sources()[code];
-    if (!src) return '';
-    const f = (Store.state.sns || {})[code];
-    const secs = Math.ceil(src.dur + SNS_TAIL);
-    const k = 'sns|' + code;
-    const stale = f && f.srcSig && f.srcSig !== srcSig(code);
-    return '<div class="srcrow"><strong>공식 계정용 예고편</strong> ' +
-      (f ? '<span>' + h(f.name) + ' <span class="muted small">' + f.w + '×' + f.h + ' · ' + f.dur + '초 · ' + (f.size / 1048576).toFixed(1) + 'MB · ' + h(f.at) + '</span></span>' +
-          (/mp4/.test(f.type) ? '' : ' <span class="tag warn" title="이 브라우저가 MP4로 만들지 못했습니다. 인스타그램은 MP4·MOV만 받습니다. 크롬 최신판에서 다시 만들어 주세요">MP4 아님</span>') +
-          (stale ? ' <span class="tag warn">원본이 바뀜</span>' : '') +
-          ' <button class="link-btn" data-act="previewAsset" data-key="' + h(k) + '">미리보기</button> <button class="link-btn" data-act="downloadAsset" data-key="' + h(k) + '">내려받기</button>' +
-          ' <button class="sm' + (stale ? ' primary' : '') + '" data-act="makerSns" data-code="' + h(code) + '">다시 만들기</button> <a class="btn sm primary" href="#igpost">인스타그램에 올리기 ↓</a>'
-        : '<span class="muted">예고편을 자르지 않고 통째로 우리 형식(오른쪽 위 로고, 자막, 끝 화면)으로 만듭니다. 길이는 예고편 그대로에 끝 화면 ' + SNS_TAIL + '초가 붙습니다.</span> <button class="sm primary" data-act="makerSns" data-code="' + h(code) + '">만들기 (약 ' + (secs >= 90 ? Math.ceil(secs / 60) + '분' : secs + '초') + ')</button>') +
-      '</div>';
+  function snsRecipe(code) {
+    const src = snsSource(code), e = snsEdit(code);
+    return {
+      src: src.key, segs: [[0, src.info.dur]], tail: e.end, end: e.end, fit: 'cover', pos: 50,
+      subsOn: e.subsOn, cues: e.subsOn ? cuesFor(code, 0, src.info.dur) : [], poster: true, posterTitle: e.posterTitle,
+      genre: '', title: e.title, sub: '', hook: '', cta1: e.cta1, cta2: FORM.cta2, benefit: e.benefit, fmt: 2,
+    };
   }
+  // 만든 뒤에 파일이나 편집 값이 바뀌었는지 보려고 남기는 표시.
+  const snsSig = (code) => { const src = snsSource(code), e = snsEdit(code); return src ? [src.key, src.info.name, src.info.size, e.title, e.cta1, e.benefit, e.subsOn, e.posterTitle, e.end, !!pcache[code]].join('|') : ''; };
+  // 게시 칸에 넣는 ①파일 선택 ②편집 ③확인.
+  function snsPanel(code) {
+    const src = snsSource(code), f = (Store.state.sns || {})[code], e = snsEdit(code);
+    if (!(code in pcache)) posterOf(code).then(() => window.App.render(true));
+    const po = pcache[code];
+    const fin = '<input type="file" accept="video/*" data-chg="makerSnsFile" data-code="' + h(code) + '" hidden>';
+    const step = (n, title, body, done) => '<div class="igstep' + (done ? ' done' : '') + '"><h3><span class="num">' + n + '</span> ' + title + '</h3>' + body + '</div>';
+    const s1 = step(1, '예고편 파일 고르기',
+      (src ? '<p style="margin:0 0 6px"><strong>' + h(src.info.name) + '</strong> <span class="muted small">' + src.info.w + '×' + src.info.h + ' · ' + src.info.dur + '초 · ' + (src.picked ? '여기서 고른 파일' : '작품의 원본 영상') + '</span></p>' : '<p class="muted" style="margin:0 0 6px">아직 고른 파일이 없습니다.</p>') +
+      '<div class="actions"><label class="btn' + (src ? '' : ' primary') + ' upload">' + (src ? '다른 파일 고르기' : '파일 고르기') + fin + '</label>' +
+      (src && src.picked && sources()[code] ? '<button class="link-btn" data-act="makerSnsUseSource" data-code="' + h(code) + '">작품의 원본 영상(' + h(sources()[code].name) + ') 쓰기</button>' : '') + '</div>' +
+      (src && src.info.h < src.info.w ? '<p class="small muted" style="margin:6px 0 0">가로 영상입니다. 릴스는 세로(9:16)가 화면을 꽉 채웁니다.</p>' : ''), !!src);
+    if (!src) return s1;
+    const secs = Math.ceil(src.info.dur + e.end);
+    const stale = f && f.sig && f.sig !== snsSig(code);
+    const fld = (label, key, val, extra) => '<label class="mf"><span>' + label + '</span><input type="text" data-chg="makerSnsEdit" data-code="' + h(code) + '" data-f="' + key + '" value="' + h(val) + '"' + (extra || '') + '></label>';
+    const chk = (label, key, on, dis) => '<label class="check"><input type="checkbox" data-chg="makerSnsEdit" data-code="' + h(code) + '" data-f="' + key + '"' + (on ? ' checked' : '') + (dis ? ' disabled' : '') + '><span class="t">' + label + '</span></label>';
+    const s2 = step(2, '우리 스타일로 편집',
+      '<p class="small muted" style="margin:0 0 8px">예고편은 자르지 않고 통째로 씁니다. 오른쪽 위에 로고를 얹고, 끝에 포스터·「지금 원스토어에서」·로고·버튼이 나오는 끝 화면을 붙입니다.</p>' +
+      '<div class="or-grid">' + fld('끝 화면 버튼 글자', 'benefit', e.benefit) + fld('끝 화면 작은 문구', 'cta1', e.cta1) + '</div>' +
+      chk('자막 넣기' + (e.canSubs ? ' <span class="muted small">(' + h(subsOf(code).name) + (src.picked ? '. 작품의 원본 영상에 맞춘 자막이라 다른 파일이면 어긋날 수 있습니다' : '') + ')</span>' : ' <span class="muted small">(자막 파일 없음. 위 작품 칸에서 넣을 수 있습니다)</span>'), 'subsOn', e.subsOn, !e.canSubs) +
+      '<p class="small" style="margin:8px 0 4px">끝 화면 포스터: ' + (po ? '<img class="pthumb" src="' + h(po.src) + '" alt="작품 포스터"> 있음' : '<span class="tag warn">없음</span> <span class="muted">위 작품 칸에서 포스터를 넣으면 끝 화면에 들어갑니다. 없으면 제목을 글자로 씁니다.</span>') + '</p>' +
+      (po ? chk('포스터에 제목이 있음 <span class="muted small">(끄면 제목을 글자로 따로 쓴다)</span>', 'posterTitle', e.posterTitle) : '') +
+      (!po || !e.posterTitle ? fld('끝 화면 제목', 'title', e.title) : '') +
+      '<div class="actions" style="margin-top:10px"><button class="' + (!f || stale ? 'primary' : '') + '" data-act="makerSns" data-code="' + h(code) + '">' + (f ? '다시 만들기' : '우리 스타일로 만들기') + ' (약 ' + (secs >= 90 ? Math.ceil(secs / 60) + '분' : secs + '초') + ')</button>' +
+      (stale ? '<span class="tag warn">파일이나 편집 내용이 바뀌었습니다. 다시 만들어야 반영됩니다</span>' : '') + '</div>', !!f && !stale);
+    const k = 'sns|' + code;
+    const s3 = step(3, '만든 영상 확인',
+      f ? '<p style="margin:0 0 6px"><strong>' + h(f.name) + '</strong> <span class="muted small">' + f.w + '×' + f.h + ' · ' + f.dur + '초 · ' + (f.size / 1048576).toFixed(1) + 'MB · ' + h(f.at) + ' 만듦</span>' +
+          (/mp4/.test(f.type) ? '' : ' <span class="tag warn" title="이 브라우저가 MP4로 만들지 못했습니다. 인스타그램은 MP4·MOV만 받습니다. 크롬 최신판에서 다시 만들어 주세요">MP4 아님</span>') + '</p>' +
+          '<div class="actions"><button class="primary" data-act="previewAsset" data-key="' + h(k) + '">미리보기</button><button data-act="downloadAsset" data-key="' + h(k) + '">내려받기</button></div>' +
+          '<p class="small muted" style="margin:6px 0 0">로고 위치, 자막, 끝 화면의 포스터와 버튼 글자를 끝까지 보고 확인합니다. 고칠 것이 있으면 ②에서 고쳐 다시 만듭니다.</p>'
+        : '<p class="muted" style="margin:0">②에서 만들면 여기서 미리 볼 수 있습니다.</p>', !!f && !stale);
+    return s1 + s2 + s3;
+  }
+  const snsReady = (code) => { const f = (Store.state.sns || {})[code]; return f ? { file: f, stale: !!(f.sig && f.sig !== snsSig(code)) } : null; };
+  Actions.makerSnsFile = (el) => {
+    const file = el.files && el.files[0], code = el.dataset.code;
+    if (!file) return false;
+    if (!file.type.startsWith('video/')) { toast('영상 파일을 골라 주세요'); return false; }
+    window.Assets.probe(file).then(async (m) => {
+      if (!m.dur) throw new Error('영상 길이를 읽지 못했습니다');
+      await window.Assets.raw.put('snssrc|' + code, file);
+      Store.update((st) => { (st.snsSrc = st.snsSrc || {})[code] = { name: file.name, size: file.size, w: m.w, h: m.h, dur: m.dur }; });
+      toast('예고편 파일을 넣었습니다 (' + m.dur + '초)');
+    }).catch((e) => toast('파일을 넣지 못했습니다: ' + e.message));
+    return false;
+  };
+  Actions.makerSnsUseSource = (el) => { const code = el.dataset.code; window.Assets.raw.del('snssrc|' + code); Store.update((st) => { if (st.snsSrc) delete st.snsSrc[code]; }); };
+  Actions.makerSnsEdit = (el) => Store.update((st) => {
+    const e = ((st.snsEdit = st.snsEdit || {})[el.dataset.code] = (st.snsEdit[el.dataset.code] || {}));
+    e[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
+  });
   Actions.makerSns = (el) => {
-    const code = el.dataset.code, src = sources()[code];
-    if (!src) { toast('원본 영상(예고편)을 먼저 넣어 주세요'); return false; }
-    const key = code + '_sns', T = target(key), r = snsRecipe(code), secs = Math.ceil(src.dur + SNS_TAIL), ctl = { stop: false };
+    const code = el.dataset.code, src = snsSource(code);
+    if (!src) { toast('예고편 파일을 먼저 골라 주세요'); return false; }
+    const key = code + '_sns', T = target(key), r = snsRecipe(code), sig = snsSig(code), secs = Math.ceil(src.info.dur + r.tail), ctl = { stop: false };
     const box = dialog('maker-run', '<h3>공식 계정용 예고편을 만드는 중</h3><p class="small muted">영상은 실제 길이만큼 걸립니다 (약 ' + secs + '초). 이 창을 다른 탭이나 창으로 가리면 멈추니 켜 둔 채 기다려 주세요.</p><p data-x="pct" style="font-size:22px;font-weight:700;margin:8px 0">0%</p><div class="row"><span class="spin" aria-hidden="true"></span><button data-x="stop">멈추기</button></div>');
     box.addEventListener('cancel', (ev) => ev.preventDefault());
     const btn = box.querySelector('[data-x=stop]'), pct = box.querySelector('[data-x=pct]');
@@ -730,9 +792,9 @@
     make(key, r, (x) => { pct.textContent = Math.round(x * 100) + '%'; }, ctl).then(async (file) => {
       await window.Assets.raw.put('sns|' + code, file);
       const d = new Date();
-      Store.update((st) => { (st.sns = st.sns || {})[code] = { name: file.name, size: file.size, type: file.type, w: T.W, h: T.H, dur: r1(src.dur + SNS_TAIL), srcSig: srcSig(code), at: (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') }; });
+      Store.update((st) => { (st.sns = st.sns || {})[code] = { name: file.name, size: file.size, type: file.type, w: T.W, h: T.H, dur: r1(src.info.dur + r.tail), sig, at: (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') }; });
       pct.textContent = '100%';
-      done('만들었습니다. 미리보기로 확인한 뒤 올려 주세요');
+      done('만들었습니다. ③의 미리보기로 확인해 주세요');
     }).catch((e) => done('만들지 못했습니다: ' + e.message));
     return false;
   };
@@ -759,7 +821,7 @@
     return '<div class="srcrow' + (src ? '' : ' need') + '"><strong>원본 영상</strong> ' +
       (src ? '<span>' + h(src.name) + ' <span class="muted small">' + src.w + '×' + src.h + ' · ' + src.dur + '초</span></span> <label class="link-btn">바꾸기' + input + '</label> <label class="link-btn" title="작품 폴더를 고르면 예고편·자막·포스터를 다시 골라냅니다">폴더에서 다시 고르기' + fin + '</label>'
         : '<span class="muted">없음. 작품 폴더를 고르면 그 안에서 예고편(없으면 1화)·자막·포스터를 골라냅니다.</span> <label class="btn primary srcpick">＋ 작품 폴더 고르기' + fin + '</label> <label class="link-btn">영상 파일 하나만 고르기' + input + '</label>') +
-      subHtml + posterHtml + (src && made ? ' <button class="sm' + (stale ? ' primary' : '') + '" data-act="makerRedoAll" data-code="' + h(code) + '" title="고쳐 둔 글자와 설정은 그대로 두고, 지금의 원본·자막·포스터로 다시 만듭니다">만든 소재 ' + made + '개 모두 다시 만들기' + (stale ? ' (' + stale + ' 반영)' : '') + '</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>' + snsRow(code);
+      subHtml + posterHtml + (src && made ? ' <button class="sm' + (stale ? ' primary' : '') + '" data-act="makerRedoAll" data-code="' + h(code) + '" title="고쳐 둔 글자와 설정은 그대로 두고, 지금의 원본·자막·포스터로 다시 만듭니다">만든 소재 ' + made + '개 모두 다시 만들기' + (stale ? ' (' + stale + ' 반영)' : '') + '</button>' : '') + (src && empty ? ' <button class="sm primary" data-act="makerAuto" data-code="' + h(code) + '">빈 칸 ' + empty + '개 자동으로 만들기</button>' : '') + '</div>';
   }
   Actions.makerSource = (el) => {
     const file = el.files && el.files[0];
@@ -1025,5 +1087,5 @@
   }
   Actions.makerOpen = (el) => { const b = window.UI.busy('편집기를 여는 중'); openEditor(el.dataset.key).catch((e) => toast('편집기를 열지 못했습니다: ' + e.message)).then(() => b.done()); return false; };
 
-  window.Maker = { sourceRow, setSource, setSubs, setPoster, posterOf, pickFromFolder, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
+  window.Maker = { snsPanel, snsReady, sourceRow, setSource, setSubs, setPoster, posterOf, pickFromFolder, parseSrt, target, defaults, make, makeInto, analyze, pick, draw, openEditor };
 })();
