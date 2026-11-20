@@ -751,7 +751,7 @@
       '<p class="small" style="margin:8px 0 4px">끝 화면 포스터: ' + (po ? '<img class="pthumb" src="' + h(po.src) + '" alt="작품 포스터"> 있음' : '<span class="tag warn">없음</span> <span class="muted">위 작품 칸에서 포스터를 넣으면 끝 화면에 들어갑니다. 없으면 제목을 글자로 씁니다.</span>') + '</p>' +
       (po ? chk('포스터에 제목이 있음 <span class="muted small">(끄면 제목을 글자로 따로 쓴다)</span>', 'posterTitle', e.posterTitle) : '') +
       (!po || !e.posterTitle ? fld('끝 화면 제목', 'title', e.title) : '') +
-      '<div class="actions" style="margin-top:10px"><button class="' + (!f || stale ? 'primary' : '') + '" data-act="makerSns" data-code="' + h(code) + '">' + (f ? '다시 만들기' : '우리 스타일로 만들기') + ' (약 ' + (secs >= 90 ? Math.ceil(secs / 60) + '분' : secs + '초') + ')</button>' +
+      '<div class="actions" style="margin-top:10px"><button class="' + (!f || stale ? 'primary' : '') + '" data-act="makerSns" data-code="' + h(code) + '">' + (f ? '다시 만들기' : '홍보 영상 만들기') + ' (약 ' + (secs >= 90 ? Math.ceil(secs / 60) + '분' : secs + '초') + ')</button>' +
       (stale ? '<span class="tag warn">파일이나 편집 내용이 바뀌었습니다. 다시 만들어야 반영됩니다</span>' : '') + '</div>', !!f && !stale);
     const k = 'sns|' + code;
     const s3 = step(3, '만든 영상 확인',
