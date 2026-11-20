@@ -208,6 +208,7 @@
               return (pl.length ? '<h3>초상권 (CP 메타)</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + pl.map((x) => '<li>' + (x.warn ? '<span class="tag warn">확인 필요</span> ' : '<span class="tag ok">사용 가능 문구</span> ') + h(x.text) + ' <span class="muted">(' + h(x.names.join(', ')) + ')</span></li>').join('') + '</ul>' : '') +
                 (pv.marketing ? '<h3>CP가 적은 마케팅 포인트</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.marketing) + '</p>' : '') +
                 (pv.logline ? '<h3>로그라인</h3><p class="small" style="margin:0;white-space:pre-line">' + h(pv.logline) + '</p>' : ''); })() +
+            (window.Outreach ? window.Outreach.section(w) : '') +
             '<h3>집행 전에 확인</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + cautions(w, p).map((c) => '<li>' + h(c) + '</li>').join('') + '</ul>' +
           '</div>' +
         '</div></div>';
