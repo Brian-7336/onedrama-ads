@@ -128,6 +128,35 @@
     Store.save();
   }
 
+  // 새 화면(html)으로 바꾸되, 글자를 치고 있는 칸(keep)과 그 조상은 그대로 두고 나머지 형제만 갈아 끼운다.
+  // 새 화면에 같은 id의 칸이 없으면 false를 돌려준다 (그때는 통째로 다시 그린다).
+  function patchAround(html, keep) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    let twin = null;
+    try { twin = tmp.querySelector('#' + CSS.escape(keep.id)); } catch (e) { return false; }
+    if (!twin || twin.tagName !== keep.tagName) return false;
+    // 두 나무에서 칸부터 뿌리까지의 길이가 같아야 한다.
+    const pathOf = (el, root) => { const a = []; for (let x = el; x && x !== root; x = x.parentNode) a.push(x); return a; };
+    const live = pathOf(keep, view), fresh = pathOf(twin, tmp);
+    if (live.length !== fresh.length || live.some((x, i) => x.tagName !== fresh[i].tagName)) return false;
+    for (let i = 0; i < live.length; i++) {
+      const lc = live[i], fc = fresh[i], lp = lc.parentNode, fp = fc.parentNode;
+      // 조상(칸 자신은 빼고)의 속성은 새 것으로 맞춘다.
+      if (i > 0) {
+        [...lc.attributes].forEach((a) => { if (!fc.hasAttribute(a.name)) lc.removeAttribute(a.name); });
+        [...fc.attributes].forEach((a) => { if (lc.getAttribute(a.name) !== a.value) lc.setAttribute(a.name, a.value); });
+      }
+      [...lp.childNodes].forEach((n) => { if (n !== lc) lp.removeChild(n); });
+      const before = [], after = [];
+      let seen = false;
+      [...fp.childNodes].forEach((n) => { if (n === fc) seen = true; else (seen ? after : before).push(n); });
+      before.forEach((n) => lp.insertBefore(n, lc));
+      after.forEach((n) => lp.appendChild(n));
+    }
+    return true;
+  }
+
   function render(keepScroll) {
     const route = current();
     markSeen(route);
@@ -142,7 +171,10 @@
     const inner = [...view.querySelectorAll('[style*="overflow-y"]')].map((el) => el.scrollTop);
 
     const inPrep = PREP.includes(route[0]);
-    view.innerHTML = (inPrep ? prepBar(route, flow) : runLine(route, flow)) + Views[route[2]]() + (inPrep ? prepPager(route, flow) : '');
+    const html = (inPrep ? prepBar(route, flow) : runLine(route, flow)) + Views[route[2]]() + (inPrep ? prepPager(route, flow) : '');
+    // 글자를 치고 있는 칸은 건드리지 않고 그 둘레만 바꾼다. 칸을 새로 만들면 한글 조합이 끊겨 글자가 빠지거나 겹친다.
+    const typing = keepScroll && focusId && view.dataset.route === route[2] && /^(INPUT|TEXTAREA)$/.test(active.tagName) && !/^(checkbox|radio|file|button|submit)$/.test(active.type) && patchAround(html, active);
+    if (!typing) view.innerHTML = html;
     view.dataset.route = route[2];
     // 작품 코드(원드라마 작품 ID)는 길어서 화면 글자에서는 끝 4글자만 보여 준다. 입력 칸과 링크의 실제 값은 그대로 둔다.
     const walker = document.createTreeWalker(view, NodeFilter.SHOW_TEXT);
@@ -153,7 +185,7 @@
     if (keepScroll) {
       window.scrollTo(0, y);
       [...view.querySelectorAll('[style*="overflow-y"]')].forEach((el, i) => { el.scrollTop = inner[i] || 0; });
-      if (focusId) {
+      if (focusId && !typing) {
         const el = $(focusId);
         if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch (e) { /* 숫자 칸은 건너뜀 */ } }
       }
@@ -178,9 +210,9 @@
   });
   // 한글 조합 중에는 다시 그리지 않는다 (글자가 끊긴다). 조합이 끝나면 한 번 반영한다.
   view.addEventListener('input', (ev) => {
-    if (ev.isComposing) return;
     const el = ev.target.closest('[data-inp]');
-    if (el) run(el.dataset.inp, el, ev);
+    if (!el || (ev.isComposing && !el.id)) return;
+    run(el.dataset.inp, el, ev);
   });
   view.addEventListener('compositionend', (ev) => {
     const el = ev.target.closest('[data-inp]');
