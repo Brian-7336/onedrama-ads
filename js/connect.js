@@ -6,7 +6,7 @@
   const { h, toast } = window.UI;
   const S = () => Store.state;
   const cfg = () => { const s = S().settings; s.connect = s.connect || {}; return s.connect; };
-  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, ig: { on: false, id: '', username: '', pageToken: '', match: false, busy: false, log: [] }, yt: { token: '', channel: '', channelId: '', match: false, busy: false, log: [] } };
+  const st = { meta: { token: '', accounts: [], pages: [], busy: false, log: [], sdk: false }, ig: { on: false, token: '', id: '', username: '', pageToken: '', match: false, busy: false, log: [] }, yt: { token: '', channel: '', channelId: '', match: false, busy: false, log: [] } };
   const ORIGIN = location.origin;
 
   const log = (k, msg, cls) => { st[k].log.push([new Date().toTimeString().slice(0, 8), msg, cls || '']); if (st[k].log.length > 60) st[k].log.shift(); window.App.render(true); };
@@ -95,9 +95,9 @@
   // 영상 파일은 메타의 재개형 업로드(rupload.facebook.com)로 브라우저에서 바로 보낸다.
   // =====================================================================
   const IG_NAME = String(((P.sns.accounts.find((a) => a[0] === '인스타그램') || [])[1] || '').replace(/^@/, '')).toLowerCase();
-  const igTok = () => st.ig.pageToken || st.meta.token;
+  const igTok = () => st.ig.pageToken || st.ig.token;
   async function igAfterLogin() {
-    const pages = await graph('me/accounts', { fields: 'id,name,username,access_token,instagram_business_account{id,username}', limit: 100 });
+    const pages = await graph('me/accounts', { fields: 'id,name,username,access_token,instagram_business_account{id,username}', limit: 100, access_token: st.ig.token });
     const list = (pages.data || []).filter((p) => p.instagram_business_account);
     const pg = list.find((p) => (p.instagram_business_account.username || '').toLowerCase() === IG_NAME) || list.find((p) => p.id === cfg().metaPage) || list[0];
     if (!pg) throw new Error('인스타그램 프로페셔널 계정이 연결된 페이지가 없습니다. 인스타그램 계정을 비즈니스 계정으로 바꾸고 페이스북 페이지에 연결해 주세요');
@@ -108,18 +108,10 @@
     st.ig.on = true;
     log('ig', '인스타그램 계정 @' + st.ig.username + ' 을 찾았습니다' + (st.ig.match ? '' : ' (원드라마 공식 계정 @' + IG_NAME + ' 이 아닙니다)'), st.ig.match ? 'ok' : 'bad');
   }
-  // 올릴 수 있는 영상: 작품의 원본 영상(예고편)과 만들어 둔 세로 영상.
+  // 올릴 수 있는 영상: 「소재 준비」에서 우리 형식으로 만든 공식 계정용 예고편.
   function igChoices() {
-    const out = [];
-    S().works.forEach((w) => {
-      const src = (S().sources || {})[w.code];
-      if (src) out.push({ key: 'src|' + w.code, code: w.code, label: w.title + ' · 원본 영상 (' + src.name + ', ' + Math.round(src.dur) + '초)', type: /\.mp4$/i.test(src.name) ? 'video/mp4' : '', name: src.name, dur: src.dur, raw: true });
-      window.Calc.creativeIds(w.code).forEach((id) => {
-        const k = w.code + '_' + id, f = fileOf(k), T = window.Maker.target(k);
-        if (f && /^video\//.test(f.type || '') && T.H > T.W) out.push({ key: k, code: w.code, label: w.title + ' · ' + T.name + ' (' + window.Calc.short(k) + ')', type: f.type, name: f.name, dur: T.dur });
-      });
-    });
-    return out;
+    const sns = S().sns || {};
+    return S().works.filter((w) => sns[w.code]).map((w) => { const f = sns[w.code]; return { key: 'sns|' + w.code, code: w.code, label: w.title + ' · 공식 계정용 예고편 (' + f.dur + '초, ' + f.at + ' 만듦)', type: f.type, name: f.name, dur: f.dur }; });
   }
   const igPick = () => { const list = igChoices(); return list.find((x) => x.key === cfg().igPick) || list[0] || null; };
   // 캡션 기본값: 작품 소개, 무료 회차, 보는 곳, 출연자 계정, 해시태그.
@@ -144,8 +136,8 @@
   const igCaption = (code) => { const c = (cfg().igCaption || {})[code]; return c == null ? igCaptionDefault(code) : c; };
   async function igPublish() {
     const pick = igPick();
-    if (!pick) throw new Error('올릴 영상이 없습니다. 소재 화면에서 원본 영상(예고편)을 먼저 넣어 주세요');
-    const blob = pick.raw ? await window.Assets.raw.get(pick.key) : await window.Assets.get(pick.key);
+    if (!pick) throw new Error('올릴 영상이 없습니다. 작품의 「공식 계정용 예고편」을 먼저 만들어 주세요');
+    const blob = await window.Assets.raw.get(pick.key);
     if (!blob) throw new Error('영상 파일을 찾지 못했습니다 (이 브라우저에 넣은 파일만 올릴 수 있습니다)');
     const type = pick.type || blob.type || '';
     if (!/mp4|quicktime/.test(type) && !/\.(mp4|mov)$/i.test(pick.name || '')) throw new Error('인스타그램은 MP4·MOV만 받습니다 (지금 파일: ' + (pick.name || type) + ')');
@@ -175,9 +167,9 @@
     const posts = c.igPosts || [];
     const history = posts.length ? '<details class="cguide"><summary>올린 기록 ' + posts.length + '건</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">' + posts.map((x) => '<li>' + h(x.at) + ' · ' + h(x.label) + (x.link ? ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">게시물 보기 ↗</a>' : '') + '</li>').join('') + '</ul></details>' : '';
     let body;
-    if (!st.meta.token) body = '<p class="small muted" style="margin:0">위에서 「메타로 로그인」을 먼저 합니다.</p>';
-    else if (!st.ig.on) {
-      body = '<button class="primary" data-act="cnIgLogin"' + busyAttr('ig') + '>인스타그램 게시 권한 허용</button> <span class="small muted">메타 창에서 인스타그램 계정 @' + h(IG_NAME) + ' 과 연결된 페이지를 고르고 「콘텐츠 게시」를 허용합니다.</span>';
+    if (!st.ig.on) {
+      body = '<div class="filters"><label class="field">메타 앱 ID<input type="text" inputmode="numeric" style="width:200px" value="' + h(c.metaAppId || '') + '" data-chg="cnSet" data-key="metaAppId" placeholder="숫자 15~16자리"></label></div>' +
+        '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgLogin"' + (c.metaAppId ? '' : ' disabled') + busyAttr('ig') + '>메타로 로그인하고 게시 권한 허용</button> <span class="small muted">' + (c.metaAppId ? '메타 창에서 인스타그램 계정 @' + h(IG_NAME) + ' 과 연결된 페이지를 고르고 「콘텐츠 게시」를 허용합니다. 비밀번호는 메타 창에만 입력됩니다.' : '앱 ID를 넣으면 눌러집니다. 앱 만드는 법은 <a href="#/register">광고 등록</a>의 메타 칸에 있습니다.') + '</span></div>';
     } else {
       const list = igChoices(), pick = igPick();
       body = '<p style="margin:0 0 8px">계정: <strong>@' + h(st.ig.username) + '</strong> ' + (st.ig.match ? '<span class="tag ok">원드라마 공식 계정 맞음</span>' : '<span class="tag bad">원드라마 공식 계정(@' + h(IG_NAME) + ')이 아님. 올릴 수 없습니다</span>') + '</p>' +
@@ -185,14 +177,14 @@
           '<label class="mf" style="margin-top:8px"><span>캡션 (고쳐 써도 된다. 비우면 캡션 없이 올라간다) <button class="link-btn" data-act="cnIgCaptionReset" data-code="' + h(pick.code) + '">추천 문구로</button></span><textarea rows="9" style="width:100%" data-chg="cnIgCaption" data-code="' + h(pick.code) + '">' + h(igCaption(pick.code)) + '</textarea></label>' +
           '<div class="actions" style="margin-top:8px"><button class="primary" data-act="cnIgPublish"' + (st.ig.match ? '' : ' disabled') + busyAttr('ig') + '>릴스로 게시하기</button></div>' +
           '<p class="small muted" style="margin:6px 0 0">누르면 확인 창이 한 번 뜨고, 바로 공개 게시됩니다(예약·비공개 없음). 세로 9:16, 3초~15분, MP4·MOV만 올라갑니다. 출연자 계정을 캡션에 쓰기 전에 소속사 확인이 끝났는지 봅니다.</p>'
-          : '<p class="small muted" style="margin:0">올릴 영상이 없습니다. <a href="#/creatives">소재 준비</a>에서 작품의 원본 영상(예고편)을 넣으면 여기에 나옵니다.</p>');
+          : '<p class="small muted" style="margin:0">올릴 영상이 없습니다. 위 작품 칸의 「공식 계정용 예고편」에서 「만들기」를 누르면 여기에 나옵니다.</p>') + '<div class="actions" style="margin-top:8px"><button class="link-btn" data-act="cnIgLogout">로그아웃</button></div>';
     }
-    return '<div class="connect"><h3 style="margin-top:0">공식 인스타그램에 예고편 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h3>' +
+    return '<div class="card" id="igpost"><h2>공식 인스타그램에 예고편 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h2><div class="connect" style="margin:0">' +
       '<details class="cguide"><summary>처음 한 번: 준비할 것</summary><ol>' +
       '<li>인스타그램 @' + h(IG_NAME) + ' 이 프로페셔널(비즈니스) 계정이고, 페이스북 페이지 「원드라마」에 연결돼 있어야 한다.</li>' +
-      '<li>위에서 만든 메타 앱의 「사용 사례」에 인스타그램 콘텐츠 관리(<code>instagram_basic</code>, <code>instagram_content_publish</code>)를 추가한다.</li>' +
+      '<li>메타 앱(광고 올리기에 쓰는 것과 같은 앱)의 「사용 사례」에 인스타그램 콘텐츠 관리(<code>instagram_basic</code>, <code>instagram_content_publish</code>)를 추가한다.</li>' +
       '<li>앱이 개발 모드여도 앱 관리자 본인이 관리하는 계정에는 심사 없이 올릴 수 있다.</li></ol></details>' +
-      body + history + logHtml('ig') + '</div>';
+      body + history + logHtml('ig') + '</div></div>';
   }
 
   const POS = {
@@ -383,7 +375,7 @@
     return '<div class="connect"><h3 style="margin-top:0">로그인으로 영상 올리기 <span class="tag warn">실제 계정으로 시험 필요</span></h3>' + guide + body + logHtml('yt') + '</div>';
   }
 
-  const panel = (m) => (m.id === 'meta' ? metaPanel() + igPanel() : m.id === 'youtube' ? ytPanel() : '');
+  const panel = (m) => (m.id === 'meta' ? metaPanel() : m.id === 'youtube' ? ytPanel() : '');
 
   // 오래 걸리는 일을 돌리는 틀: 버튼을 잠그고, 끝나면 풀고, 오류는 기록한다.
   function job(k, fn) {
@@ -406,7 +398,7 @@
     }, { scope: 'ads_management,pages_show_list,pages_read_engagement' });
     return false;
   };
-  Actions.cnMetaLogout = () => { st.meta.token = ''; st.meta.accounts = []; st.meta.pages = []; Object.assign(st.ig, { on: false, id: '', username: '', pageToken: '', match: false }); if (window.FB) try { window.FB.logout(); } catch (e) { /* 이미 로그아웃 */ } };
+  Actions.cnMetaLogout = () => { st.meta.token = ''; st.meta.accounts = []; st.meta.pages = []; if (window.FB) try { window.FB.logout(); } catch (e) { /* 이미 로그아웃 */ } };
   Actions.cnMetaUpload = () => {
     const n = [...new Set(rowsOf('meta').filter((r) => fileOf(r.ad) && !reg().assets[r.key]).map((r) => r.ad))].length;
     if (!n) { toast('새로 올릴 소재가 없습니다'); return false; }
@@ -419,14 +411,15 @@
   };
   // 인스타그램 게시 권한은 광고 권한과 따로 받는다 (앱에 권한이 없을 때 광고 로그인까지 막히지 않게).
   Actions.cnIgLogin = () => {
-    if (!window.FB) { toast('먼저 메타로 로그인해 주세요'); return false; }
+    if (!st.meta.sdk) return job('ig', async () => { await metaSdk(); log('ig', '준비됐습니다. 로그인 버튼을 한 번 더 눌러 주세요'); });
     window.FB.login((r) => {
-      if (!r.authResponse) { log('ig', '권한을 허용하지 않았습니다', 'bad'); return; }
-      st.meta.token = r.authResponse.accessToken;
+      if (!r.authResponse) { log('ig', '로그인을 취소했거나 권한을 허용하지 않았습니다', 'bad'); return; }
+      st.ig.token = r.authResponse.accessToken;
       job('ig', igAfterLogin);
     }, { scope: 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement' });
     return false;
   };
+  Actions.cnIgLogout = () => { Object.assign(st.ig, { on: false, token: '', id: '', username: '', pageToken: '', match: false }); };
   Actions.cnIgPick = (el) => Store.update(() => { cfg().igPick = el.value; });
   Actions.cnIgCaption = (el) => { Store.update(() => { const c = cfg(); (c.igCaption = c.igCaption || {})[el.dataset.code] = el.value; }); return false; };
   Actions.cnIgCaptionReset = (el) => Store.update(() => { const c = cfg(); if (c.igCaption) delete c.igCaption[el.dataset.code]; });
@@ -449,5 +442,5 @@
     return job('yt', ytUpload);
   };
 
-  window.Connect = { panel, st, _test: { metaUpload, metaCreate, ytUpload, metaAfterLogin, igAfterLogin, igPublish, igChoices, igCaptionDefault } };
+  window.Connect = { panel, igPanel, st, _test: { metaUpload, metaCreate, ytUpload, metaAfterLogin, igAfterLogin, igPublish, igChoices, igCaptionDefault } };
 })();
