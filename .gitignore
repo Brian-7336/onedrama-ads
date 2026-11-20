@@ -17,7 +17,3 @@ js/private-data.js
 광고_드라마목록/
 # 작품 포스터 (CP 자료). tools/fetch_posters.py 로 받는다
 posters/
-
-# 받은 로고 원본 (사이트에 쓸 것만 img/ 에 따로 넣는다)
-원드라마 로고/
-원드라마_로고_*.zip
