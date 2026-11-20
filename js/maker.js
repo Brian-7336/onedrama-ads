@@ -1,12 +1,15 @@
 // 영상 만들기: 원본 영상(1화, 예고편 등)을 원드라마 홍보영상 형식으로 잘라 소재 칸에 넣는다.
-// 형식은 SNS 홍보영상(2026-11)을 따른다: 위쪽 어두운 띠에 장르·제목, 오른쪽 위 로고,
-// 끝 몇 초는 화면을 어둡게 하고 「깔 게 없는 숏드라마, / 지금 원스토어에서 / 로고 / 혜택 한 줄」.
+// 영상 형식은 SNS 홍보 예고편(「계약결혼, 사냥개가 되겠습니다」 예고편 SNS 업로드용, 2026-11)을 따른다:
+// 본편에는 오른쪽 위 로고만 얹고, 끝 몇 초는 화면이 바로 바뀌어 포스터 → 제목 → 「지금 원스토어에서」
+// → 로고(원이 퍼지고 별이 반짝임) → 「깔 게 없는 숏드라마」와 버튼이 차례로 뜬다.
+// 포스터에 제목이 이미 있으면 제목 글자는 따로 쓰지 않는다.
+// 이미지 카드는 예전 형식(위쪽 띠에 장르·제목, 아래에 문구)을 그대로 쓴다.
 // 모든 작업은 이 브라우저 안에서 한다. 영상은 실제 길이만큼 시간이 걸린다(15초 영상 = 15초).
 (function () {
   const P = window.PLAN;
   const { h, toast } = window.UI;
   const FORM = {
-    cta1: '깔 게 없는 숏드라마,', cta2: '지금 원스토어에서', hi: '원스토어', blue: '#5468ff', yellow: '#f6c453',
+    cta1: '깔 게 없는 숏드라마', cta2: '지금 원스토어에서', hi: '원스토어', blue: '#5062f8', yellow: '#f6c453', bg: '#08080c',
     sans: '"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif', serif: '"Noto Serif KR","Nanum Myeongjo","Batang",serif',
   };
   const MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
@@ -231,10 +234,10 @@
     const base15 = T.kind === 'image' ? pick(src, 15, []) : seg;
     return {
       subsOn: true, cues: T.kind === 'image' ? [] : cuesFor(code, seg[0], seg[1]),
-      poster: true,
+      poster: true, posterTitle: true,
       src: 'src|' + code, segs: [seg], at: r1(clamp(base15[0] + ({ im01: 2, im02: 6, bn01: 10 }[T.id] || 3), 0, Math.max(0, src.dur - 0.2))),
       fit: 'auto', pos: 50, genre: wd.genre || '', title: w.title || '', sub: '', hook: '',
-      cta1: FORM.cta1, cta2: FORM.cta2, benefit: wd.free ? '1~' + wd.free + '화 무료' : '', end: L <= 6 ? 1.5 : L <= 15 ? 3 : 4,
+      cta1: FORM.cta1, cta2: FORM.cta2, benefit: wd.free ? '1~' + wd.free + '화 무료로 보기' : '지금 보러가기', end: L <= 6 ? 1.6 : 3.2, fmt: 2,
     };
   }
 
@@ -288,6 +291,152 @@
       ctx.drawImage(el, (W - iw * s) * (sr > tr ? pos : 0.5), (H - ih * s) * (sr > tr ? 0.5 : pos), iw * s, ih * s);
     }
   }
+  // ---------- 끝 화면 (영상) ----------
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x, 0, 1), 3);
+  const frac = (x) => x - Math.floor(x);
+  function star(ctx, x, y, rad) {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, q = i % 2 ? rad * 0.28 : rad; ctx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * q, y + Math.sin(a) * q); }
+    ctx.closePath(); ctx.fill();
+  }
+  // 제목을 두 줄까지 나눈다. 쉼표가 있으면 거기서 먼저 끊는다.
+  function titleLines(ctx, title, maxW, size) {
+    const t = String(title || '').trim();
+    if (!t) return { lines: [], size };
+    let sz = size, lines;
+    for (;;) {
+      ctx.font = '800 ' + Math.round(sz) + 'px ' + FORM.sans;
+      const i = t.indexOf(', ');
+      const byComma = i > 0 ? [t.slice(0, i + 1), t.slice(i + 2)] : null;
+      lines = byComma && byComma.every((l) => ctx.measureText(l).width <= maxW) ? byComma : wrap(ctx, t, maxW, 3);
+      if ((lines.length <= 2 && lines.every((l) => ctx.measureText(l).width <= maxW)) || sz < size * 0.55) break;
+      sz *= 0.93;
+    }
+    return { lines: lines.slice(0, 2), size: sz };
+  }
+  // e: 끝 화면이 시작된 뒤 지난 시간(초). 참조 영상은 3.2초짜리라, 더 짧으면 같은 비율로 빨라진다.
+  function drawEnd(ctx, T, m, r, e, end, U) {
+    const W = T.W, H = T.H, tall = H >= W * 1.2;
+    const k = Math.min(1, end / 3.2);
+    const prog = (t0, d) => clamp((e - t0 * k) / ((d || 0.22) * k), 0, 1);
+    const po = r.poster !== false && m.poster ? m.poster : null;
+    const baked = !!po && r.posterTitle !== false;      // 포스터에 제목이 있다 → 제목 글자를 쓰지 않는다
+    const pw = po ? po.naturalWidth : 0, ph = po ? po.naturalHeight : 0;
+    ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1;
+
+    // 바탕: 화면이 바로 바뀐다 (참조 영상은 페이드 없이 컷).
+    if (po || !m.el) { ctx.fillStyle = FORM.bg; ctx.fillRect(0, 0, W, H); }
+    else { ctx.fillStyle = 'rgba(8,8,12,.88)'; ctx.fillRect(0, 0, W, H); }
+    let cx = W / 2, mw = W;
+    if (po && tall && !baked) {
+      // 제목 없는 그림: 위쪽에 가로를 꽉 채우고 아래로 갈수록 어두워진다 (참조 영상과 같은 배치).
+      const s0 = W / pw;
+      ctx.drawImage(po, 0, 0, W, ph * s0);
+      const g = ctx.createLinearGradient(0, H * 0.36, 0, H * 0.6);
+      g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(1, FORM.bg);
+      ctx.fillStyle = g; ctx.fillRect(0, H * 0.36, W, H * 0.24 + 1);
+      ctx.fillStyle = FORM.bg; ctx.fillRect(0, H * 0.6, W, H * 0.4);
+    } else if (po) {
+      // 제목이 든 포스터(또는 가로·정사각 화면): 포스터를 통째로 보여 주고 글자는 그 아래(가로는 오른쪽)에 둔다.
+      const box = tall ? [W * 0.5, H * 0.03, W * 0.94, H * 0.66] : [W * 0.22, H * 0.07, W * 0.36, H * 0.86];
+      const s0 = Math.min(box[2] / pw, box[3] / ph), dw = pw * s0, dh = ph * s0, x = box[0] - dw / 2, y = box[1] + (tall ? 0 : (box[3] - dh) / 2);
+      // 뒤에는 같은 포스터를 흐리고 어둡게 깔아 빈 곳을 채운다.
+      ctx.save(); ctx.filter = 'blur(' + Math.round(40 * U) + 'px)'; ctx.globalAlpha = 0.35;
+      const sb = Math.max(W / pw, H / ph); ctx.drawImage(po, (W - pw * sb) / 2, (H - ph * sb) / 2, pw * sb, ph * sb);
+      ctx.restore();
+      const g = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      g.addColorStop(0, 'rgba(8,8,12,0)'); g.addColorStop(tall ? 0.45 : 1, tall ? FORM.bg : 'rgba(8,8,12,.6)');
+      ctx.fillStyle = g; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40 * U; ctx.shadowOffsetY = 12 * U;
+      ctx.fillStyle = '#000'; ctx.fillRect(x, y, dw, dh); ctx.restore();
+      ctx.drawImage(po, x, y, dw, dh);
+      if (!tall) { cx = W * 0.7; mw = W * 0.56; }
+    }
+
+    // 글자 묶음: 제목(1~2줄) → 지금 원스토어에서 → 로고 → 작은 문구 → 버튼. 간격은 참조 영상에서 잰 값.
+    const sc = tall ? 1 : Math.min(1, mw / (760 * U));
+    const u = U * sc;
+    const tl = baked ? { lines: [], size: 0 } : titleLines(ctx, r.title, mw - 120 * u, 94 * u);
+    const tag = String(r.cta1 || '').replace(/[,\s]+$/, '');
+    const items = [];
+    tl.lines.forEach((l, i) => items.push({ k: 'title', text: l, gap: i ? 129 * u * (tl.size / (94 * u)) : 0 }));
+    if (r.cta2) items.push({ k: 'c2', gap: items.length ? 136 * u : 0 });
+    items.push({ k: 'logo', gap: items.length ? 125 * u : 0 });
+    if (tag) items.push({ k: 'tag', gap: (r.benefit ? 127 : 110) * u });
+    if (r.benefit) items.push({ k: 'cta', gap: (tag ? 72 : 140) * u });
+    const span = items.reduce((x, it) => x + it.gap, 0);
+    // 세로: 버튼이 참조 영상과 같은 높이(91.8%)에 오게 아래에서부터 쌓는다. 가로: 세로 가운데.
+    let y = tall ? H * (r.benefit ? 0.918 : tag ? 0.89 : 0.83) - span : (H - span) / 2;
+    // 등장 시각(초, 3.2초 기준): 제목 줄마다 0.2초, 이어서 둘째 줄 낱말이 하나씩, 로고, 작은 문구와 버튼.
+    const base = 0.17 + 0.2 * tl.lines.length;
+    const at = { c2: base, logo: base + 0.5, tag: base + 0.9, cta: base + 0.95 };
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    let nTitle = 0;
+    items.forEach((it) => {
+      y += it.gap;
+      if (it.k === 'title') {
+        const p = easeOut(prog(0.17 + 0.2 * nTitle++));
+        if (p <= 0) return;
+        ctx.globalAlpha = p; ctx.fillStyle = '#fff'; ctx.font = '800 ' + Math.round(tl.size) + 'px ' + FORM.sans;
+        ctx.fillText(it.text, cx, y + (1 - p) * 26 * u);
+      }
+      if (it.k === 'c2') {
+        fitFont(ctx, r.cta2, 700, 48 * u, FORM.sans, mw - 120 * u);
+        const i = r.cta2.indexOf(FORM.hi), full = ctx.measureText(r.cta2).width, x0 = cx - full / 2;
+        const parts = i >= 0 ? [r.cta2.slice(0, i), FORM.hi, r.cta2.slice(i + FORM.hi.length)] : [r.cta2];
+        let x = x0;
+        ctx.textAlign = 'left';
+        parts.forEach((txt, n) => {
+          const w = ctx.measureText(txt).width, p = easeOut(prog(at.c2 + [0, 0.1, 0.23][n], 0.12));
+          if (p > 0 && txt) {
+            ctx.globalAlpha = p;
+            if (n === 1) { ctx.fillStyle = FORM.blue; ctx.fillRect(x - 6 * u, y - 33 * u, w + 12 * u, 66 * u); }
+            ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y + 2 * u);
+          }
+          x += w;
+        });
+        ctx.textAlign = 'center';
+      }
+      if (it.k === 'logo') {
+        const el = e / k - at.logo;       // 로고가 뜬 뒤 지난 시간 (3.2초 기준)
+        if (el < 0) return;
+        // 원이 빠르게 퍼졌다가 사라지고, 별이 원 둘레에서 반짝이며 흩어진다.
+        const life = 0.95, q = clamp(el / life, 0, 1);
+        if (q < 1) {
+          const rad = (165 + 100 * easeOut(el / 0.28)) * u, fade = 1 - clamp((el - 0.3) / (life - 0.3), 0, 1);
+          ctx.globalAlpha = 0.85 * fade; ctx.strokeStyle = '#4a4fd6'; ctx.lineWidth = 3 * u;
+          ctx.beginPath(); ctx.arc(cx, y, rad, 0, Math.PI * 2); ctx.stroke();
+          for (let i = 0; i < 18; i++) {
+            const a = i * 2.39996 + 0.4, f = 0.78 + 0.62 * frac(i * 0.618 + 0.13), tw = 0.55 + 0.45 * Math.sin(el * 14 + i * 1.7);
+            const rr = rad * f + 30 * u * q;
+            ctx.globalAlpha = fade * tw; ctx.fillStyle = i % 3 ? '#8f96ff' : '#fff';
+            star(ctx, cx + Math.cos(a) * rr * 1.25, y + Math.sin(a) * rr * 0.8, (5 + 8 * frac(i * 0.37)) * u);
+          }
+        }
+        const p = easeOut(el / 0.25), z = 0.72 + 0.28 * p;
+        ctx.globalAlpha = p;
+        ctx.save(); ctx.translate(cx, y); ctx.scale(z, z); logo(ctx, 0, 0, 78 * u, 'center'); ctx.restore();
+        ctx.textAlign = 'center';
+      }
+      if (it.k === 'tag') {
+        const p = easeOut(prog(at.tag, 0.35));
+        if (p <= 0) return;
+        ctx.globalAlpha = p; ctx.fillStyle = '#c9cdf5';
+        fitFont(ctx, tag, 500, 30 * u, FORM.sans, mw - 120 * u); ctx.fillText(tag, cx, y + (1 - p) * 14 * u);
+      }
+      if (it.k === 'cta') {
+        const p = easeOut(prog(at.cta, 0.35));
+        if (p <= 0) return;
+        fitFont(ctx, r.benefit, 800, 48 * u, FORM.sans, mw - 220 * u);
+        const bw = ctx.measureText(r.benefit).width + 96 * u, bh = 86 * u, yy = y + (1 - p) * 14 * u;
+        ctx.globalAlpha = p;
+        ctx.save(); ctx.shadowColor = 'rgba(80,98,248,.65)'; ctx.shadowBlur = 34 * u; ctx.fillStyle = FORM.blue;
+        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(cx - bw / 2, yy - bh / 2, bw, bh, bh / 2); else ctx.rect(cx - bw / 2, yy - bh / 2, bw, bh); ctx.fill(); ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.fillText(r.benefit, cx, yy + 2 * u);
+      }
+    });
+    ctx.globalAlpha = 1;
+  }
   // t: 만들어지는 영상의 시각(초), total: 전체 길이. still이면 이미지 카드로 그린다.
   function draw(ctx, T, m, r, t, total, still) {
     const W = T.W, H = T.H, U = Math.min(W, H) / 1080, tall = H >= W * 1.2;
@@ -296,13 +445,15 @@
     drawSource(ctx, T, m.el, m.w, m.h, r);
 
     // 위쪽 띠: 장르, 제목, 로고
-    const g = ctx.createLinearGradient(0, 0, 0, 380 * U);
-    g.addColorStop(0, 'rgba(0,0,0,.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 380 * U);
+    if (still) {
+      const g = ctx.createLinearGradient(0, 0, 0, 380 * U);
+      g.addColorStop(0, 'rgba(0,0,0,.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, 380 * U);
+    }
     shadow(ctx, true, U);
-    logo(ctx, W - 44 * U, (tall ? 100 : 64) * U, 44 * U, 'right');
+    logo(ctx, W - 42 * U, (tall ? 125 : 70) * U, 42 * U, 'right');
     ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
-    if (tall) {
+    if (!still) { /* 영상은 로고만 */ } else if (tall) {
       ctx.textAlign = 'center';
       if (r.genre) { ctx.font = '500 ' + Math.round(30 * U) + 'px ' + FORM.sans; ctx.fillText(r.genre, W / 2, 178 * U); }
       if (r.title) { fitFont(ctx, r.title, 800, 52 * U, FORM.sans, W - 120 * U); ctx.fillText(r.title, W / 2, 240 * U); }
@@ -339,7 +490,12 @@
 
     // 끝 화면
     const end = Math.min(r.end == null ? 3 : r.end, total * 0.5);
-    const a = still ? 1 : end > 0 ? clamp((t - (total - end)) / 0.4, 0, 1) : 0;
+    if (!still) {
+      if (end > 0 && t >= total - end) drawEnd(ctx, T, m, r, t - (total - end), end, U);
+      ctx.restore();
+      return;
+    }
+    const a = 1;
     if (a > 0) {
       ctx.globalAlpha = a;
       const c1 = (tall || W === H || still) && r.cta1 && r.cta1.indexOf(' ') > 0 && r.cta1.length > 8
@@ -595,6 +751,14 @@
     const code = codeOf(k), T = target(k), src = sources()[code];
     const r = JSON.parse(JSON.stringify(Store.state.creatives[k].edit));
     r.poster = r.poster !== false;
+    if (T.kind === 'video' && r.fmt !== 2) {
+      if (r.posterTitle == null) r.posterTitle = true;
+      if (r.cta1 === '깔 게 없는 숏드라마,') r.cta1 = FORM.cta1;
+      if (/화 무료$/.test(r.benefit || '')) r.benefit += '로 보기';
+      if (!r.benefit) r.benefit = '지금 보러가기';
+      const L = (T.dur || 15); r.end = L <= 6 ? 1.6 : Math.max(r.end || 0, 3.2);
+      r.fmt = 2;
+    }
     if (r.src !== 'src|' + code || !src) return r;          // 직접 올린 파일을 고쳐 만든 것은 그대로 다시 만든다
     const seg = r.segs[0];
     const others = window.Calc.creativeIds(code).map((id) => code + '_' + id).filter((x) => x !== k && target(x).kind === 'video')
@@ -672,9 +836,10 @@
       (isVid ? '<label class="check"><input type="checkbox" data-f="subsOn"' + (r.subsOn !== false ? ' checked' : '') + '><span class="t">원본 자막 넣기</span></label><div class="cues" data-x="cues"></div>' : '') +
       fld('장르 줄', 'genre', r.genre) + fld('제목', 'title', r.title) +
       (isVid ? fld('첫 3초 자막 (비우면 없음)', 'sub', r.sub, ' placeholder="예: 결혼식 날, 신랑이 사라졌다"') : '') +
-      fld('끝 화면 한 줄 (비우면 없음)', 'hook', r.hook, ' placeholder="예: 보낸 지 6분. 지울 수 없다."') +
-      fld('끝 화면 큰 글자', 'cta1', r.cta1) + fld('끝 화면 둘째 줄 (「원스토어」는 파란 상자)', 'cta2', r.cta2) + fld('혜택 한 줄 (노란 글자)', 'benefit', r.benefit) +
+      (isVid ? '' : fld('끝 화면 한 줄 (비우면 없음)', 'hook', r.hook, ' placeholder="예: 보낸 지 6분. 지울 수 없다."')) +
+      fld(isVid ? '끝 화면 작은 문구' : '끝 화면 큰 글자', 'cta1', r.cta1) + fld('끝 화면 둘째 줄 (「원스토어」는 파란 상자)', 'cta2', r.cta2) + fld(isVid ? '끝 화면 버튼 글자' : '혜택 한 줄 (노란 글자)', 'benefit', r.benefit) +
       (isVid ? '<label class="check"><input type="checkbox" data-f="poster"' + (r.poster !== false ? ' checked' : '') + (m.poster ? '' : ' disabled') + '><span class="t">끝 화면에 작품 포스터 넣기' + (m.poster ? '' : ' <span class="muted small">(포스터 없음. 소재 화면에서 넣을 수 있습니다)</span>') + '</span></label>' : '') +
+      (isVid ? '<label class="check"><input type="checkbox" data-f="posterTitle"' + (r.posterTitle !== false ? ' checked' : '') + (m.poster ? '' : ' disabled') + '><span class="t">포스터에 제목이 있음 <span class="muted small">(끄면 제목 글자를 따로 쓴다)</span></span></label>' : '') +
       (isVid ? '<label class="mf"><span>끝 화면 길이 (초)</span><input type="number" data-f="end" min="0" max="' + Math.floor(L / 2) + '" step="0.5" value="' + r.end + '"></label>' : '') +
       '<div class="row maker-go"><button class="primary" data-x="make">' + (cur.file ? '다시 만들어 바꿔 넣기' : '만들어서 넣기') + '</button><span class="small muted" data-x="msg">' + (isVid ? '만드는 데 약 ' + L + '초 걸립니다.' : '') + '</span></div></div></div>');
     const cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
@@ -719,6 +884,7 @@
       const f = el.dataset.f;
       if (!f) return;
       if (f === 'subsOn') { r.subsOn = el.checked; if (!playing) show(); return; }
+      if (f === 'posterTitle') { r.posterTitle = el.checked; if (!playing) { t = Math.max(0, L - 0.01); show(); } return; }
       if (f === 'poster') { r.poster = el.checked; if (!playing) { t = Math.max(0, L - 0.01); show(); } return; }
       if (f === 'start') { stop(); const a = r1(+el.value); r.segs = [[a, r1(a + L)]]; if (ownSrc) r.cues = cuesFor(code, a, a + L); listCues(); t = 0; show(); return; }
       if (f === 'at') { r.at = r1(+el.value); show(); return; }
