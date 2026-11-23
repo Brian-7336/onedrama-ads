@@ -203,6 +203,10 @@
                 (tg.length ? (has.length ? '<p class="small" style="line-height:1.9;margin:0">' + has.map((x) => '<span class="tag">' + h(x.handle) + ' <span class="muted">' + h(x.name) + '</span></span>').join(' ') + '</p>' : '') +
                   (has.length < tg.length ? '<p class="small" style="margin:' + (has.length ? '6px' : '0') + ' 0 0"><span class="tag warn">인스타 확인 못 함</span> <span class="muted">' + h(tg.filter((x) => !x.handle).map((x) => x.name).join(', ')) + ' — CP나 소속사에 계정을 확인한다.</span></p>' : '')
                   : '<p class="small muted" style="margin:0">출연진을 확인하지 못했다. CP에 배우 인스타그램 계정을 요청한다.</p>'); })() +
+            (() => { const leads = p.cast.filter((c) => c.lead === '주연').map((c) => plain(c.name)); const g = (p.genre || '').split(/[\/,·\s]/)[0];
+              return '<h3>공식 계정 하이라이트 <span class="muted" style="font-weight:400">이 작품의 장면·티저를 넣을 곳</span></h3><p class="small" style="line-height:1.9;margin:0">' +
+                (g ? '<span class="tag accent">장르</span> <span class="tag">' + h(g) + '</span> ' : '') +
+                (leads.length ? '<span class="tag accent">배우</span> ' + leads.map((n) => '<span class="tag">' + h(n) + '</span>').join(' ') : '<span class="muted">배우별 하이라이트는 출연진이 확인되면 정한다.</span>') + '</p>'; })() +
             (p.fans.length ? '<h3>공유를 부탁할 계정</h3><table class="inner"><tbody>' + p.fans.map((c) => '<tr><td>' + h(c.name) + '</td><td class="wrap">' + h(c.group || '') + (c.fanclub ? '<br><span class="small muted">팬클럽 ' + h(c.fanclub) + '</span>' : '') + '</td><td class="wrap">' + (chips(c) || '<span class="muted small">확인 못 함</span>') + '</td></tr>').join('') + '</tbody></table>' : '') +
             (() => { const pl = portraitLines(w); const pv = (window.WORKMETA || {})[w.title] || {};
               return (pl.length ? '<h3>초상권 (CP 메타)</h3><ul class="small" style="margin:0;padding-left:18px;line-height:1.7">' + pl.map((x) => '<li>' + (x.warn ? '<span class="tag warn">확인 필요</span> ' : '<span class="tag ok">사용 가능 문구</span> ') + h(x.text) + ' <span class="muted">(' + h(x.names.join(', ')) + ')</span></li>').join('') + '</ul>' : '') +

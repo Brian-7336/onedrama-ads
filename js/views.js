@@ -624,6 +624,10 @@
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
+      '<div class="card" id="snsplan"><h2>원드라마 SNS 계정 운영 방안</h2><p style="margin:0 0 12px">' + h(P.sns.purpose) + '</p>' +
+        '<div class="tablewrap"><table><thead><tr><th>구분</th><th>핵심 전략</th><th>하는 일</th><th>목표</th><th>이 사이트에서</th></tr></thead><tbody>' +
+        P.sns.strategy.map((x) => '<tr><td><span class="tag accent">' + h(x.kind) + '</span></td><td><strong>' + h(x.name) + '</strong></td><td class="wrap">' + h(x.todo) + '</td><td class="wrap">' + h(x.goal) + '</td><td class="wrap small muted">' + h(x.where || '–') + '</td></tr>').join('') +
+        '</tbody></table></div><p class="small muted" style="margin:8px 0 0">' + h(P.sns.flow) + '</p></div>' +
       '<div class="card"><h2>공식 SNS 연계 (사업TF)</h2>' + kv(P.sns.support) + '<h3>원드라마 계정</h3><div class="actions">' + P.sns.accounts.map((a) => ext(a[2], a[0] + ' ' + a[1])).join('') + '</div><h3>원스토어 공식 계정</h3><div class="actions">' + P.sns.onestore.map((a) => ext(a[2], a[0] + ' ' + a[1])).join('') + '</div>' + '</div></div>' +
       '<div class="card"><h2>아직 정하지 않은 것</h2>' + P.openQuestions.map((q) => '<div class="check"><span class="t">' + h(q) + '</span></div>').join('') + '</div>' +
       '<div class="card"><h2>용어</h2>' + kv(P.glossary) + '</div>';

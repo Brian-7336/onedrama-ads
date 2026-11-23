@@ -122,7 +122,9 @@
     const cast = ((window.CAST || {})[w.title] || {}).cast || [];
     const tags = [...new Set(cast.flatMap((c) => (c.links || []).map((l) => (/instagram\.com\/([A-Za-z0-9._]+)/i.exec(l[1]) || [])[1])).filter(Boolean).map((x) => '@' + x.replace(/\.$/, '')))];
     const tname = String(w.title || '').replace(/[^0-9A-Za-z가-힣]/g, '');
-    const hash = ['원드라마', '숏드라마', '원스토어', /[A-Za-z가-힣]{2}/.test(tname) ? tname : '', wd.genre ? wd.genre.split(/[\/,·\s]/)[0] + '드라마' : ''].filter(Boolean);
+    // 배우 이름 해시태그는 주연만, 괄호 속 설명을 뺀 이름 그대로 단다 (늘 같은 표기를 쓰려고).
+    const actors = cast.filter((c) => c.lead === '주연').map((c) => String(c.name).replace(/\s*\(.*$/, '').replace(/[^0-9A-Za-z가-힣]/g, '')).filter((x) => x.length >= 2).slice(0, 5);
+    const hash = ['원드라마', '숏드라마', '원스토어', /[A-Za-z가-힣]{2}/.test(tname) ? tname : '', wd.genre ? wd.genre.split(/[\/,·\s]/)[0] + '드라마' : ''].concat(actors).filter(Boolean);
     return [
       '「' + (w.title || '') + '」 예고편',
       (wd.genre ? wd.genre + ' 숏드라마' : '숏드라마') + (wd.free ? ' · ' + (wd.free > 1 ? '1~' + wd.free + '화' : '1화') + ' 무료' : ''),
