@@ -195,6 +195,73 @@
       window.Maker.snsPanel(w.code) + step(4, '인스타그램에 올리기', s4, false) + history + logHtml('ig') + '</div>';
   }
 
+  // =====================================================================
+  // 공식 유튜브에 예고편 올리기 (쇼츠). 제목·설명을 채널의 형식대로 만들어 주고, 올린 주소를 적어 둔다.
+  // 올리는 일 자체는 유튜브 스튜디오에서 한다.
+  // =====================================================================
+  const YT_UPLOAD = 'https://studio.youtube.com/channel/' + P.youtubeChannelId + '/videos/upload?d=ud';
+  const ytWork = () => { const ws = S().works; return ws.find((w) => w.code === cfg().ytWork) || ws[0] || null; };
+  const ytData = (w) => ({
+    wd: (window.WORKS_DATA || []).find((x) => x.title === w.title && x.cp === w.cp) || {},
+    meta: (window.WORKMETA || {})[w.title] || {},
+    cast: ((window.CAST || {})[w.title] || {}).cast || [],
+  });
+  // 한 줄 문구 기본값: 작품 소개 자료의 따옴표 문구. 없으면 「작품명 예고편」.
+  function ytHookDefault(w) {
+    const m = /[“"]([^”"]{4,40})[”"]/.exec(ytData(w).meta.marketing || '');
+    return m ? m[1].replace(/[!.]+$/, '') : '';
+  }
+  const ytDraft = (code) => (cfg().ytDraft || {})[code] || {};
+  const ytHook = (w) => { const v = ytDraft(w.code).hook; return v == null ? ytHookDefault(w) : v; };
+  // 제목 형식: 「한 줄 문구 | 작품명 #shorts」 (계약결혼 영상과 같은 형식)
+  const ytTitle = (w) => { const k = ytHook(w).trim(); return ((k ? k + ' | ' : '') + w.title + (k ? '' : ' 예고편') + ' #shorts').slice(0, 100); };
+  function ytDescDefault(w) {
+    const { wd, meta, cast } = ytData(w);
+    const story = String(meta.logline || '').split(/\n+/).map((x) => x.trim()).filter(Boolean).join('\n');
+    const tname = String(w.title || '').replace(/[^0-9A-Za-z가-힣]/g, '');
+    const groups = [...new Set(cast.map((c) => (/[(（]([가-힣A-Za-z0-9]+)[)）]/.exec(c.group || '') || [])[1]).filter(Boolean))].slice(0, 2);
+    const hash = ['원드라마', '숏드라마', /[A-Za-z가-힣]{2}/.test(tname) ? tname : ''].concat(groups, [wd.genre ? wd.genre.split(/[\/,·\s]/)[0] + '드라마' : '', '드라마추천']).filter(Boolean);
+    return [
+      story,
+      '',
+      '「' + w.title + '」' + (wd.free ? ' ' + (wd.free > 1 ? '1~' + wd.free + '화' : '1화') + ' 무료,' : '') + ' 지금 원스토어 「숏드라마」 탭에서.',
+      '',
+      [...new Set(hash)].map((x) => '#' + x).join(' '),
+    ].filter((x, i, a) => x !== '' || (i > 0 && a[i - 1] !== '')).join('\n');
+  }
+  const ytDesc = (w) => { const v = ytDraft(w.code).desc; return v == null ? ytDescDefault(w) : v; };
+  const ytPosts = () => (cfg().ytPosts || []).concat(P.sns.youtubePosted || []);
+  function ytPostPanel() {
+    const works = S().works;
+    const open = '<div class="card" id="ytpost"><h2>공식 유튜브에 예고편 올리기 <span class="muted" style="font-weight:400;font-size:14px">쇼츠</span></h2>';
+    if (!works.length) return open + '<div class="empty">먼저 <a href="#/works">작품</a>을 골라 주세요.</div></div>';
+    const w = ytWork(), { wd } = ytData(w), code = h(w.code);
+    const step = (n, title, body) => '<div class="igstep"><h3><span class="num">' + n + '</span> ' + title + '</h3>' + body + '</div>';
+    const made = window.Maker.snsReady(w.code);
+    const posts = ytPosts();
+    const mine = posts.filter((x) => x.title === w.title);
+    const hold = /보류/.test(wd.status || '');
+    const s1 = '<p style="margin:0">' + (made ? '위 인스타그램 칸에서 만든 홍보 영상 <strong>' + h(made.file.name) + '</strong> (' + h(made.file.dur) + '초)을 쓰거나, ' : '') +
+      '작품 폴더의 <code>…_예고편_SNS_업로드용.mp4</code> 파일을 올린다. 세로 영상이고 3분 이하면 쇼츠로 분류된다.</p>' +
+      (hold ? '<p class="small" style="margin:6px 0 0"><span class="tag warn">공개 보류 작품</span> 콘텐츠 목록에 공개 보류로 적혀 있다. 서비스에 열렸는지 확인하고 올린다.</p>' : '');
+    const s2 = '<label class="mf"><span>한 줄 문구 (제목 앞부분. 비우면 「작품명 예고편」) <button class="link-btn" data-act="cnYtDraftReset" data-code="' + code + '">추천 문구로</button></span>' +
+        '<input type="text" id="ythook-' + code + '" maxlength="60" value="' + h(ytHook(w)) + '" data-inp="cnYtDraft" data-field="hook" data-code="' + code + '" placeholder="예: 250억 횡령 누명, 살 길은 계약결혼뿐"></label>' +
+      '<p style="margin:0 0 8px">제목: <strong>' + h(ytTitle(w)) + '</strong> <button class="sm" data-act="cnYtCopy" data-kind="title" data-code="' + code + '">제목 복사</button></p>' +
+      '<label class="mf"><span>설명 (줄거리 두세 줄, 무료 회차, 해시태그. 고쳐 써도 된다)</span><textarea rows="8" style="width:100%" data-chg="cnYtDraft" data-field="desc" data-code="' + code + '">' + h(ytDesc(w)) + '</textarea></label>' +
+      '<div class="actions"><button class="sm" data-act="cnYtCopy" data-kind="desc" data-code="' + code + '">설명 복사</button></div>';
+    const s3 = '<ol style="margin:0 0 8px;padding-left:20px"><li><a href="' + h(YT_UPLOAD) + '" target="_blank" rel="noopener noreferrer">유튜브 스튜디오 업로드 창 열기 ↗</a> (원드라마 채널로 로그인돼 있어야 한다)</li>' +
+      '<li>파일을 고르고, ②의 제목과 설명을 붙여 넣는다.</li>' +
+      '<li><strong>썸네일은 이때 넣는다.</strong> 게시한 뒤에는 쇼츠의 썸네일 파일을 올릴 수 없다.</li>' +
+      '<li>시청자층은 「아동용 아님」, 공개 상태는 「공개」.</li></ol>' +
+      '<p class="small muted" style="margin:0">Claude 앱의 브라우저에 유튜브가 로그인돼 있으면 「이 작품 예고편 유튜브에 올려」라고 시켜도 된다. 파일 넣기부터 제목·설명 입력까지 대신 하고, 게시 전에 한 번 물어본다.</p>';
+    const s4 = '<form class="filters" data-submit="cnYtPostAdd" data-code="' + code + '"><input name="link" type="url" required pattern="https://(www\\.)?(youtube\\.com|youtu\\.be)/.+" placeholder="올린 영상 주소 (https://youtube.com/shorts/…)" style="flex:1 1 320px" aria-label="올린 영상 주소"><button class="primary">올린 기록 남기기</button></form>' +
+      (mine.length ? '<ul class="small" style="margin:8px 0 0;padding-left:18px">' + mine.map((x) => '<li>' + h(x.at) + ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">' + h(x.link) + ' ↗</a></li>').join('') + '</ul>' : '<p class="small muted" style="margin:8px 0 0">이 작품은 아직 올린 기록이 없다.</p>');
+    const history = posts.length ? '<details class="cguide" style="margin-top:12px"><summary>채널에 올린 예고편 ' + posts.length + '건</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">' + posts.map((x) => '<li>' + h(x.at) + ' · ' + h(x.title) + ' · <a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">영상 보기 ↗</a></li>').join('') + '</ul></details>' : '';
+    return open +
+      '<div class="filters" style="margin-bottom:12px"><label class="field">작품<select data-chg="cnYtWork">' + works.map((x) => '<option value="' + h(x.code) + '"' + (x.code === w.code ? ' selected' : '') + '>' + h(x.title) + (ytPosts().some((y) => y.title === x.title) ? ' (올림)' : '') + '</option>').join('') + '</select></label></div>' +
+      step(1, '올릴 파일', s1) + step(2, '제목과 설명', s2) + step(3, '유튜브 스튜디오에서 올리기', s3) + step(4, '올린 주소 적어 두기', s4) + history + '</div>';
+  }
+
   const POS = {
     reels: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['facebook_reels', 'story'], instagram_positions: ['reels', 'story'] },
     story: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story'], instagram_positions: ['story'] },
@@ -438,6 +505,21 @@
     if (!window.confirm('인스타그램 @' + st.ig.username + ' 에 아래 영상을 릴스로 「공개」 게시합니다. 올리면 팔로워와 누구나 볼 수 있습니다.\n\n' + pick.label + '\n\n계속할까요?')) return false;
     return job('ig', igPublish);
   };
+  Actions.cnYtWork = (el) => Store.update(() => { cfg().ytWork = el.value; });
+  Actions.cnYtDraft = (el) => Store.update(() => { const c = cfg(); c.ytDraft = c.ytDraft || {}; (c.ytDraft[el.dataset.code] = c.ytDraft[el.dataset.code] || {})[el.dataset.field] = el.value; });
+  Actions.cnYtDraftReset = (el) => Store.update(() => { const c = cfg(); if (c.ytDraft) delete c.ytDraft[el.dataset.code]; });
+  Actions.cnYtCopy = (el) => {
+    const w = S().works.find((x) => x.code === el.dataset.code);
+    if (w) window.UI.copy(el.dataset.kind === 'title' ? ytTitle(w) : ytDesc(w), (el.dataset.kind === 'title' ? '제목' : '설명') + '을 복사했습니다');
+    return false;
+  };
+  Actions.cnYtPostAdd = (el) => {
+    const w = S().works.find((x) => x.code === el.dataset.code), link = String(new FormData(el).get('link') || '').trim();
+    if (!w || !/^https:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/.test(link)) { toast('유튜브 영상 주소를 넣어 주세요'); return false; }
+    const d = new Date(), at = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    Store.update(() => { const c = cfg(); (c.ytPosts = c.ytPosts || []).unshift({ at, title: w.title, link }); });
+    toast('올린 기록을 남겼습니다');
+  };
   Actions.cnYtLogin = () => {
     if (!(window.google && window.google.accounts)) return job('yt', async () => { await loadScript('https://accounts.google.com/gsi/client'); log('yt', '준비됐습니다. 「구글로 로그인」을 한 번 더 눌러 주세요'); });
     return job('yt', ytLogin);
@@ -450,5 +532,5 @@
     return job('yt', ytUpload);
   };
 
-  window.Connect = { panel, igPanel, st, _test: { metaUpload, metaCreate, ytUpload, metaAfterLogin, igAfterLogin, igPublish, igChoices, igCaptionDefault } };
+  window.Connect = { panel, igPanel, ytPostPanel, st, _test: { ytTitle, ytDescDefault, ytHookDefault, metaUpload, metaCreate, ytUpload, metaAfterLogin, igAfterLogin, igPublish, igChoices, igCaptionDefault } };
 })();

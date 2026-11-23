@@ -433,7 +433,7 @@
           }).join('') + '</tbody></table></div>' +
           '<form class="filters" style="margin:12px 0 0" data-submit="addCreative" data-code="' + h(w.code) + '"><input name="id" placeholder="새 소재 번호 (예: v15c, im03, bn02)" pattern="(v|im|bn)[a-z0-9]{1,6}" style="flex:0 1 280px" aria-label="새 소재 번호"><button>소재 추가</button><span class="small muted">v=영상, im=이미지, bn=배너</span></form></div>';
       }).join('') +
-      (window.Connect ? window.Connect.igPanel() : '') +
+      (window.Connect ? window.Connect.igPanel() + window.Connect.ytPostPanel() : '') +
       '<div class="card"><h2>검수 기준</h2>' + P.qcItems.map((q) => '<div class="check"><span class="t">' + h(q) + '</span></div>').join('') + '<p class="small muted" style="margin-top:8px">NAS 원본은 옮기거나 지우지 않고 복사해서 작업한다. 예고편은 「04. 예고편」, 포스터는 「03. 포스터」 폴더.</p></div>';
   };
   Actions.setCreative = (el) => Store.update((s) => {
