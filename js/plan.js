@@ -269,6 +269,7 @@ window.PLAN = {
     flow: '네 가지를 함께 돌려 노출 → 관심 → 유입 → 확산으로 이어지게 한다.',
     // 원드라마 유튜브 채널에 올린 예고편 (쇼츠)
     youtubePosted: [
+      { at: '2026-11-23', title: '내 아이돌은 공익근무요원', link: 'https://youtube.com/shorts/5WXbQW1uXwA' },
       { at: '2026-11-23', title: '3+4!', link: 'https://youtube.com/shorts/3VwzQoPigmA' },
       { at: '', title: '계약결혼, 사냥개가 되겠습니다', link: 'https://youtube.com/shorts/FAt2k5KsFj4' },
     ],
