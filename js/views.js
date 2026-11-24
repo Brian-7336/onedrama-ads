@@ -624,6 +624,9 @@
       '<div class="card"><h2>담당</h2>' + kv(P.team.map((t) => [t.role, t.name])) +
         '<h3>예상 성과 (참고)</h3>' + kv([['노출', n(P.forecast.impressions) + '회'], ['첫 재생', n(P.forecast.starts) + '회 (노출의 3%)'], ['첫 재생당 비용', won(P.forecast.costPerStart)]]) +
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
+      '<div class="grid g2"><div class="card" id="lineup"><h2>12월 광고 작품과 시기 <span class="muted small">11/23 수정안</span></h2>' + kv(P.lineup) + '</div>' +
+      '<div class="card"><h2>신작 공개 일정 <span class="muted small">스튜디오지니 11/23</span></h2>' + kv(P.releases) + '</div></div>' +
+      '<div class="card" id="feedback"><h2>계획 보완 의견 <span class="muted small">사업TF 김영경 님, 11/24 메일 · 반영 여부 미정</span></h2>' + kv(P.feedback) + '</div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
       '<div class="card" id="snsplan"><h2>원드라마 SNS 계정 운영 방안</h2><p style="margin:0 0 12px">' + h(P.sns.purpose) + '</p>' +
