@@ -17,3 +17,6 @@ js/private-data.js
 광고_드라마목록/
 # 작품 포스터 (CP 자료). tools/fetch_posters.py 로 받는다
 posters/
+
+# 계정 메모는 올리지 않는다
+광고pw.txt

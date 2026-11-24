@@ -476,8 +476,10 @@
         '<dt>campaign</dt><dd><code>' + P.campaign + '</code> 하나로 둔다. 시기가 바뀌어도 그대로 두고 소재로 나눠 본다.</dd>' +
         '<dt>content</dt><dd>영상·이미지·배너는 <code>작품코드_소재번호</code> (예: <code>작품ID_v15a</code>). 작품코드는 원드라마 작품 ID를 소문자로 쓴다. 화면에는 끝 4글자만 보인다. 검색은 키워드 묶음 (<code>brand</code>, <code>genre</code>, <code>w01_title</code>).</dd>' +
         '<dt>유튜브 medium</dt><dd><select data-chg="setYtMedium" aria-label="유튜브 medium">' + opt('paid_video', 'paid_video (메타와 분리, 기본)', Calc.ytMedium()) + opt('paid_social', 'paid_social (메타와 합쳐 보기)', Calc.ytMedium()) + '</select> ' +
-          (sameMedium ? '<span class="small muted">메타와 같은 값이라 GA4에서는 source로만 나뉜다.</span>' : '<span class="tag warn">위키 표에 없는 값. 쓰기 전에 표에 추가하고 GA4 담당에게 알린다.</span>') + '</dd>' +
-        '<dt>위키에 없는 값</dt><dd><code>paid_search</code>, <code>display</code>는 위키 표에 한 줄 더하고 GA4 담당(윤현정 님)께 알린 뒤 쓴다.</dd>' +
+          (sameMedium ? '<span class="small muted">위키 표의 값. 메타와 같아 GA4에서는 source로만 나뉜다.</span>' : '<span class="tag warn">위키 표에 없는 값. 쓰기 전에 표에 추가하고 GA4 담당에게 알린다.</span>') + '</dd>' +
+        '<dt>위키에 없는 값</dt><dd>medium <code>paid_search</code>, <code>display</code>와 source <code>naver</code>는 위키 표에 없다 (11/24 확인). 표에 한 줄 더하고 GA4 담당(윤현정 님)께 알린 뒤 쓴다.</dd>' +
+        '<dt>공식 SNS (광고비 없음)</dt><dd>원드라마 공식 계정 게시물은 source <code>instagram</code>·<code>youtube</code>·<code>tiktok</code>·<code>x</code>, medium <code>social</code>, campaign <code>sns_올린날</code> (예: <code>sns_1124</code>), content 게시물 번호 (예: <code>p0412</code>). 짧은 링크 <code>drama.onestore.co.kr/s/게시물번호</code>가 태그를 붙여 작품 상세로 보낸다. 원스토어·원스토리 공식 계정이 공유할 때는 source <code>onestore</code>·<code>onestory</code>, medium <code>social</code>, campaign <code>open_올린날</code>, content 소재 이름. 유료 광고(<code>paid_social</code>)와 medium이 달라 성과가 섞이지 않는다.</dd>' +
+        '<dt>붙이지 않는 곳</dt><dd>태그는 밖에서 들어오는 첫 주소에만 붙인다. 링크에 회원 번호, 이메일 같은 개인정보는 넣지 않는다.</dd>' +
       '</dl></div>' +
       '<div class="card"><h2>이름 규칙</h2><div class="tablewrap"><table><thead><tr><th>매체</th><th>캠페인 이름</th><th>광고 세트·그룹 이름 (예)</th><th>광고 이름 = content (예)</th><th>source</th><th>medium</th></tr></thead><tbody>' + nameRows + '</tbody></table></div>' +
         '<p class="small muted" style="margin-top:8px">광고 이름을 utm content와 똑같이 두면 매체 리포트와 GA4를 소재 단위로 바로 맞춰 볼 수 있다.</p></div>' +
