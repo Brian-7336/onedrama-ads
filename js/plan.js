@@ -326,6 +326,8 @@ window.PLAN = {
       { at: '2026-11-23', title: '천하의 나쁜 X', link: 'https://youtube.com/shorts/VUP9UhQbi7o' },
       { at: '2026-11-23', title: '내 아이돌은 공익근무요원', link: 'https://youtube.com/shorts/5WXbQW1uXwA' },
       { at: '2026-11-25', title: '3+4!', link: 'https://youtube.com/shorts/B6k_FHqs284' }, // 배경음악 저작권으로 차단된 3VwzQoPigmA 대신 새 배경음악 버전
+      { at: '2026-11-25', title: '브라이덜샤워', link: 'https://youtube.com/shorts/xHebYCNBD5o' },
+      { at: '2026-11-25', title: '전직 특수부대 요원, 괴물 순경이 되다', link: 'https://youtube.com/shorts/dezf8nm2kgw' },
       { at: '', title: '계약결혼, 사냥개가 되겠습니다', link: 'https://youtube.com/shorts/FAt2k5KsFj4' },
     ],
     support: [
