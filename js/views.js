@@ -317,9 +317,10 @@
     const pickedTitles = new Set(picked.map((w) => w.cp + '|' + w.title));
     const cands = WORKS_DATA.filter((w) => w.cand);
     // 공개 보류 작품도 고를 수 있다 (공개 전에 소재를 미리 준비하려고). 상태 표시는 그대로 붙인다.
-    const hold = (w) => !w.cand && w.status === '공개 보류';
+    // 「공개 예약」은 공개 날짜가 등록된 작품, 「공개 보류」는 날짜가 아직 없는 작품. 청불은 고를 수 없다.
+    const hold = (w) => !w.cand && (w.status === '공개 보류' || w.status === '공개 예약') && w.rating !== '청불';
     const canPick = (w) => w.cand || hold(w);
-    const holdTag = (w) => (hold(w) ? ' <span class="tag warn" title="아직 공개 전입니다. 광고를 켜기 전에 공개 여부를 확인하세요">공개 보류</span>' : '');
+    const holdTag = (w) => (hold(w) ? ' <span class="tag warn" title="아직 공개 전입니다. 광고를 켜기 전에 공개 여부를 확인하세요">' + h(w.status) + '</span>' : '');
     const dupTitles = new Set(WORKS_DATA.map((w) => w.title).filter((t, i, a) => a.indexOf(t) !== i));
     const cps = [...new Set(cands.map((w) => w.cp))];
     const genres = [...new Set(cands.map((w) => w.genre))];
@@ -335,7 +336,7 @@
       const w = WORKS_DATA.find((x) => x.title === title) || {};
       const on = picked.some((x) => x.title === title);
       return '<tr><td>' + h(title) + '</td><td>' + h(w.cp || '') + '</td><td class="wrap">' + h(P.recommended[title]) + '</td><td>' +
-        (w.cand ? '<span class="tag ok">광고 가능</span>' : hold(w) ? '<span class="tag warn">공개 보류 · 고를 수 있음</span>' : '<span class="tag bad">' + h(w.status || '목록에 없음') + '</span>') + '</td><td class="num">' +
+        (w.cand ? '<span class="tag ok">광고 가능</span>' : hold(w) ? '<span class="tag warn">' + h(w.status) + ' · 고를 수 있음</span>' : '<span class="tag bad">' + h(w.status || '목록에 없음') + '</span>') + '</td><td class="num">' +
         (on ? '<span class="tag accent">고름</span>' : canPick(w) ? '<button class="sm" data-act="pickWork" data-cp="' + h(w.cp) + '" data-title="' + h(title) + '"' + (full ? ' disabled' : '') + '>고르기</button>' : '<span class="small muted">공개 여부 확인 필요</span>') + '</td></tr>';
     }).join('');
 
@@ -359,7 +360,7 @@
       castHtml +
       '<div class="card"><h2 style="margin:0"><button class="fold" data-act="toggleRec" aria-expanded="' + !!f.recOpen + '"><span class="fold-mark" aria-hidden="true">' + (f.recOpen ? '▾' : '▸') + '</span> CP 추천 작품 <span class="muted small">스튜디오지니 11/17, 쇼박스 11/19 회신 · ' + Object.keys(P.recommended).length + '편</span></button></h2>' +
         (!f.recOpen ? '</div>' : '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>작품</th><th>CP</th><th>추천 이유·쓸 소재</th><th>상태</th><th></th></tr></thead><tbody>' + recRows + '</tbody></table></div>' +
-        '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를, 쇼박스 작품은 예고편과 스틸 이미지를 홍보에 써도 된다. 공개 보류 작품은 미리 골라 소재를 준비할 수 있지만, 광고를 켜기 전에 공개됐는지 확인한다.</p></div>') +
+        '<p class="small muted" style="margin-top:8px">스튜디오지니 작품은 무료 회차를, 쇼박스 작품은 예고편과 스틸 이미지를 홍보에 써도 된다. 공개 예약·공개 보류 작품은 미리 골라 소재를 준비할 수 있지만, 광고를 켜기 전에 공개됐는지 확인한다.</p></div>') +
       '<div class="card"><h2>후보 목록 <span class="muted small" id="worksCount">' + list.length + '편' + (q ? ' · 검색 중에는 아래 조건을 적용하지 않습니다' : '') + '</span></h2>' +
         '<div class="filters"><input type="search" id="worksQ" placeholder="작품명·배우 검색" value="' + h(f.q) + '" data-inp="filterWorks" data-key="q" aria-label="작품명·배우 검색">' +
           '<select data-chg="filterWorks" data-key="cp" aria-label="CP">' + opt('', 'CP 전체', f.cp) + cps.map((c) => opt(c, c, f.cp)).join('') + '</select>' +
@@ -625,7 +626,7 @@
         '<h3>예상 성과 (참고)</h3>' + kv([['노출', n(P.forecast.impressions) + '회'], ['첫 재생', n(P.forecast.starts) + '회 (노출의 3%)'], ['첫 재생당 비용', won(P.forecast.costPerStart)]]) +
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="grid g2"><div class="card" id="lineup"><h2>12월 광고 작품과 시기 <span class="muted small">11/23 수정안</span></h2>' + kv(P.lineup) + '</div>' +
-      '<div class="card"><h2>신작 공개 일정 <span class="muted small">스튜디오지니 11/23</span></h2>' + kv(P.releases) + '</div></div>' +
+      '<div class="card"><h2>신작 공개 일정 <span class="muted small">스튜디오지니 11/23, 11/24 · 나스 등록정보 11/25</span></h2>' + kv(P.releases) + '</div></div>' +
       '<div class="card" id="feedback"><h2>계획 보완 의견 <span class="muted small">사업TF 김영경 님, 11/24 메일 · 반영 여부 미정</span></h2>' + kv(P.feedback) + '</div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +

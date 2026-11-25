@@ -87,7 +87,7 @@
       : today > PLAN.end ? '<strong>집행 종료</strong> 결산 정리'
       : '<strong>' + ph.name + ' 기간</strong> ' + (Calc.daysBetween(ph.start, today) + 1) + '일째';
     $('topTitle').textContent = inPrep ? '광고준비 · ' + route[1] : route[1];
-    document.title = route[1] + ' · 원드라마 광고 집행 관리';
+    document.title = route[1] + ' · 원드라마 AD';
   }
 
   // 광고준비 화면 위: 5단계를 가로 진행 막대로 보여 준다. 끝난 단계는 ✓, 지금 보는 단계는 강조.
