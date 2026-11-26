@@ -321,6 +321,8 @@ window.PLAN = {
     flow: '네 가지를 함께 돌려 노출 → 관심 → 유입 → 확산으로 이어지게 한다.',
     // 원드라마 유튜브 채널에 올린 예고편 (쇼츠)
     youtubePosted: [
+      { at: '2026-11-30', title: '이혼전쟁 All or Nothing (11/30 9시 공개 예약)', link: 'https://youtube.com/shorts/d1Dt-jqNDkk' }, // 11/26에 올려 예약. 2분 48초 버전
+      { at: '2026-11-30', title: '러브 인 타일랜드 (11/30 18시 공개 예약)', link: 'https://youtube.com/shorts/k9Cia-pbFUU' }, // 11/26에 올려 예약. 64초 버전
       { at: '2026-11-27', title: '며느리가 친정을 숨김 (11/27 8시 50분 공개 예약)', link: 'https://youtube.com/shorts/ScTKYQ3H4Rk' }, // 11/26에 올려 예약. 69초 버전
       { at: '2026-11-26', title: '커플지옥', link: 'https://youtube.com/shorts/o-AjTtoE6Ws' }, // 11/26 18시 공개 예약으로 올림
       { at: '2026-11-27', title: '재벌가 액막이 신부 (11/27 17시 공개 예약)', link: 'https://youtube.com/shorts/2KsdPReBHNY' }, // 11/26에 올려 예약. 공개 전에는 비공개
