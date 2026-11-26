@@ -644,6 +644,28 @@
         titles.map((t) => '<tr><td><strong>' + h(t) + '</strong>' + note(t) + '</td>' + cpCell(t) + cell(yt, t) + cell(fb, t, P.sns.facebookReels) + igCell(t) + '</tr>').join('') +
         '</tbody></table></div><p class="small muted" style="margin:8px 0 0">페이스북은 릴스마다 주소를 적어 두지 않아 릴스 목록으로 연결한다. 인스타그램은 올린 날짜를 적어 두지 않았다.</p></div>';
     };
+    // 평일 하루 두 번 올리는 예고편 추천 일정. 시작일부터 주말과 쉬는 날을 건너뛰며 순서대로 날짜를 붙인다.
+    const dailyCard = () => {
+      const d = P.sns.daily;
+      if (!d) return '';
+      const key = (t) => String(t || '').replace(/\s*\([^)]*\)\s*$/, '').replace(/[\s,!?.:·\-_~]/g, '').toLowerCase();
+      const done = new Set((P.sns.youtubePosted || []).concat(P.sns.facebookPosted || []).map((x) => key(x.title)));
+      const cpOf = (t) => ((window.WORKS_DATA || []).find((w) => key(w.title) === key(t)) || {}).cp || '';
+      const ready = new Set((d.ready || []).map(key));
+      const days = [], n = Math.max(d.am.length, d.pm.length), dow = ['일', '월', '화', '수', '목', '금', '토'];
+      for (let t = new Date(d.start + 'T00:00:00'); days.length < n; t.setDate(t.getDate() + 1)) {
+        const iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+        if (t.getDay() === 0 || t.getDay() === 6 || (d.skip || []).includes(iso)) continue;
+        days.push((t.getMonth() + 1) + '/' + t.getDate() + ' (' + dow[t.getDay()] + ')');
+      }
+      const cell = (t) => !t ? '<td class="muted">–</td>' : '<td><strong>' + h(t) + '</strong> <span class="muted small">' + h(cpOf(t)) + '</span>' +
+        (done.has(key(t)) ? ' <span class="tag ok">올림</span>' : ready.has(key(t)) ? ' <span class="tag accent">파일 준비됨</span>' : '') + '</td>';
+      return '<div class="card" id="daily"><h2>평일 예고편 올리기 추천 <span class="muted small">하루 두 번 · ' + d.slots.map((s) => s[1] + ' ' + s[2]).join(', ') + ' · 오전 ' + d.am.length + '편, 오후 ' + d.pm.length + '편</span></h2>' +
+        kv(d.notes) +
+        '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>날짜</th>' + d.slots.map((s) => '<th>' + h(s[1]) + ' <span class="muted small">' + h(s[2]) + '</span></th>').join('') + '</tr></thead><tbody>' +
+        days.map((day, i) => '<tr><td>' + h(day) + '</td>' + cell(d.am[i]) + cell(d.pm[i]) + '</tr>').join('') +
+        '</tbody></table></div></div>';
+    };
     return head('운영 가이드', '운영 기준, 매체별 메모, 용어') +
       '<div class="grid g2"><div class="card"><h2>운영 기준</h2>' + kv(P.rules) + '</div>' +
       '<div class="card"><h2>담당</h2>' + kv(P.team.map((t) => [t.role, t.name])) +
@@ -651,7 +673,7 @@
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="grid g2"><div class="card" id="lineup"><h2>12월 광고 작품과 시기 <span class="muted small">11/23 수정안</span></h2>' + kv(P.lineup) + '</div>' +
       '<div class="card"><h2>신작 공개 일정 <span class="muted small">스튜디오지니 11/23, 11/24 · 나스 등록정보 11/25</span></h2>' + kv(P.releases) + '</div></div>' +
-      postedCard() +
+      postedCard() + dailyCard() +
       '<div class="card" id="feedback"><h2>계획 보완 의견 <span class="muted small">사업TF 김영경 님, 11/24 메일 · 반영 여부 미정</span></h2>' + kv(P.feedback) + '</div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
