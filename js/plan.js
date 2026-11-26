@@ -321,6 +321,7 @@ window.PLAN = {
     flow: '네 가지를 함께 돌려 노출 → 관심 → 유입 → 확산으로 이어지게 한다.',
     // 원드라마 유튜브 채널에 올린 예고편 (쇼츠)
     youtubePosted: [
+      { at: '2026-11-27', title: '재벌가 액막이 신부 (11/27 17시 공개 예약)', link: 'https://youtube.com/shorts/2KsdPReBHNY' }, // 11/26에 올려 예약. 공개 전에는 비공개
       { at: '2026-11-23', title: '청소부의 두번째 결혼', link: 'https://youtube.com/shorts/eKhPIsuW43M' }, // 배경음악 저작권으로 차단된 iNaSSZNomHk 대신 새 배경음악 버전
       { at: '2026-11-23', title: '악녀는 모래시계를 되돌린다', link: 'https://youtube.com/shorts/6X2-sKLuDOc' },
       { at: '2026-11-23', title: '천하의 나쁜 X', link: 'https://youtube.com/shorts/VUP9UhQbi7o' },
@@ -333,7 +334,37 @@ window.PLAN = {
       { at: '2026-11-26', title: '원수를 사랑하라', link: 'https://youtube.com/shorts/485i9tCamJM' },
       { at: '2026-11-26', title: '망돌이 된 최애가 귀신붙어 찾아왔다', link: 'https://youtube.com/shorts/5ket5w4cfm0' },
       { at: '2026-11-26', title: '황녀님의 퀸력', link: 'https://youtube.com/shorts/BYIXLaPG3WY' },
-      { at: '', title: '계약결혼, 사냥개가 되겠습니다', link: 'https://youtube.com/shorts/FAt2k5KsFj4' },
+      { at: '2026-11-17', title: '계약결혼, 사냥개가 되겠습니다', link: 'https://youtube.com/shorts/FAt2k5KsFj4' },
+    ],
+    // 페이스북 페이지에 올린 예고편 (릴스, 재생 목록 「원드라마 예고편」). 11/26 메타 비즈니스 스위트에서 확인
+    facebookPosted: [
+      { at: '2026-11-27', title: '재벌가 액막이 신부' }, // 11/26에 올려 11/27 17시 게시 예약
+      { at: '2026-11-26', title: '황녀님의 퀸력' },
+      { at: '2026-11-26', title: '망돌이 된 최애가 귀신붙어 찾아왔다' },
+      { at: '2026-11-26', title: '원수를 사랑하라' },
+      { at: '2026-11-25', title: '미친 BL소설에서 살아남기' },
+      { at: '2026-11-25', title: '수영부 또라이에게 찍혀버렸다' },
+      { at: '2026-11-25', title: '전직 특수부대 요원, 괴물 순경이 되다' },
+      { at: '2026-11-25', title: '브라이덜샤워' },
+      { at: '2026-11-25', title: '내 아이돌은 공익근무요원' },
+      { at: '2026-11-25', title: '천하의 나쁜 X' },
+      { at: '2026-11-25', title: '악녀는 모래시계를 되돌린다' },
+      { at: '2026-11-25', title: '청소부의 두번째 결혼' },
+      { at: '2026-11-25', title: '3+4!' },
+      { at: '', title: '계약결혼, 사냥개가 되겠습니다' },
+    ],
+    facebookReels: 'https://www.facebook.com/ONEstoreDrama/reels/',
+    // 인스타그램 @onestoredrama에 올린 작품 릴스. 11/26 프로필에서 확인
+    instagramPosted: [
+      { title: '미친 BL소설에서 살아남기', link: 'https://www.instagram.com/reel/DgMQWjViS6f/' },
+      { title: '브라이덜샤워', link: 'https://www.instagram.com/reel/DgKBNRYC1pz/' },
+      { title: '전직 특수부대 요원, 괴물 순경이 되다', link: 'https://www.instagram.com/reel/DgJ2TH5C7ra/' },
+      { title: '청소부의 두번째 결혼', link: 'https://www.instagram.com/reel/DgHXt6KiHm-/' },
+      { title: '악녀는 모래시계를 되돌린다', link: 'https://www.instagram.com/reel/DgHS-XsC7Vh/' },
+      { title: '천하의 나쁜 X', link: 'https://www.instagram.com/reel/DgE5MagCHgN/' },
+      { title: '내 아이돌은 공익근무요원', link: 'https://www.instagram.com/reel/DgEvsK1iAG-/' },
+      { title: '3+4!', link: 'https://www.instagram.com/reel/Df9GNxbiCBr/' },
+      { title: '계약결혼, 사냥개가 되겠습니다', link: 'https://www.instagram.com/reel/Df0y_UJCLl7/' },
     ],
     support: [
       ['부탁한 것', '원스토어 이름으로 운영 중인 SNS 계정 목록, 원드라마 계정의 신작 예고편·카드를 공식 계정에서 리트윗·공유, 같이 해 볼 아이디어'],

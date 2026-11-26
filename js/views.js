@@ -620,6 +620,30 @@
   // ---------- 8. 운영 가이드 ----------
   Views.guide = function () {
     const kv = (rows) => '<dl class="kv">' + rows.map((r) => '<dt>' + h(r[0]) + '</dt><dd>' + h(r[1]) + '</dd>').join('') + '</dl>';
+    // 채널별로 올린 작품을 한 표로 모은다. 제목 뒤의 「(… 공개 예고)」 같은 덧말은 떼고 맞춘다.
+    const postedCard = () => {
+      const base = (t) => String(t || '').replace(/\s*\([^)]*\)\s*$/, '');
+      const yt = P.sns.youtubePosted || [], fb = P.sns.facebookPosted || [], ig = P.sns.instagramPosted || [];
+      const titles = [];
+      yt.concat(fb, ig).forEach((x) => { const t = base(x.title); if (!titles.includes(t)) titles.push(t); });
+      const first = (t) => [yt, fb, ig].map((l) => (l.find((x) => base(x.title) === t) || {}).at || '').filter(Boolean).sort()[0] || '';
+      titles.sort((a, b) => (first(b) || '0').localeCompare(first(a) || '0'));
+      const cell = (list, t, fallback) => {
+        const x = list.find((y) => base(y.title) === t);
+        if (!x) return '<td class="muted">안 올림</td>';
+        const url = x.link || fallback, when = x.at ? h(x.at.slice(5).replace('-', '/')) : '날짜 모름';
+        return '<td>' + when + (url ? ' · <a href="' + h(url) + '" target="_blank" rel="noopener noreferrer">' + (x.link ? '보기' : '릴스 목록') + ' ↗</a>' : '') + '</td>';
+      };
+      const igCell = (t) => { const x = ig.find((y) => base(y.title) === t); return x ? '<td><a href="' + h(x.link) + '" target="_blank" rel="noopener noreferrer">보기 ↗</a></td>' : '<td class="muted">안 올림</td>'; };
+      const note = (t) => { const x = yt.find((y) => base(y.title) === t && y.title !== t); return x ? ' <span class="tag warn">' + h(x.title.slice(t.length).replace(/[()]/g, '').trim()) + '</span>' : ''; };
+      const key = (t) => String(t || '').replace(/[\s,!?.:·\-_~]/g, '').toLowerCase();
+      const cpOf = (t) => ((window.WORKS_DATA || []).find((w) => key(w.title) === key(t)) || {}).cp || '';
+      const cpCell = (t) => { const c = cpOf(t); return c ? '<td>' + h(c) + '</td>' : '<td class="muted">–</td>'; };
+      return '<div class="card" id="posted"><h2>채널에 올린 작품 <span class="muted small">예고편 · 유튜브 ' + yt.length + '편, 페이스북 ' + fb.length + '편, 인스타그램 ' + ig.length + '편 · 11/26 확인</span></h2>' +
+        '<div class="tablewrap"><table><thead><tr><th>작품</th><th>CP</th><th>유튜브 (쇼츠)</th><th>페이스북 (릴스)</th><th>인스타그램 (릴스)</th></tr></thead><tbody>' +
+        titles.map((t) => '<tr><td><strong>' + h(t) + '</strong>' + note(t) + '</td>' + cpCell(t) + cell(yt, t) + cell(fb, t, P.sns.facebookReels) + igCell(t) + '</tr>').join('') +
+        '</tbody></table></div><p class="small muted" style="margin:8px 0 0">페이스북은 릴스마다 주소를 적어 두지 않아 릴스 목록으로 연결한다. 인스타그램은 올린 날짜를 적어 두지 않았다.</p></div>';
+    };
     return head('운영 가이드', '운영 기준, 매체별 메모, 용어') +
       '<div class="grid g2"><div class="card"><h2>운영 기준</h2>' + kv(P.rules) + '</div>' +
       '<div class="card"><h2>담당</h2>' + kv(P.team.map((t) => [t.role, t.name])) +
@@ -627,6 +651,7 @@
         '<p class="small muted" style="margin-top:8px">대행사 제안서 가정에서 낸 값이라 실제와 다를 수 있다. 목표는 시험 기간 결과를 보고 정한다.</p></div></div>' +
       '<div class="grid g2"><div class="card" id="lineup"><h2>12월 광고 작품과 시기 <span class="muted small">11/23 수정안</span></h2>' + kv(P.lineup) + '</div>' +
       '<div class="card"><h2>신작 공개 일정 <span class="muted small">스튜디오지니 11/23, 11/24 · 나스 등록정보 11/25</span></h2>' + kv(P.releases) + '</div></div>' +
+      postedCard() +
       '<div class="card" id="feedback"><h2>계획 보완 의견 <span class="muted small">사업TF 김영경 님, 11/24 메일 · 반영 여부 미정</span></h2>' + kv(P.feedback) + '</div>' +
       '<div class="card"><h2>매체별 메모</h2>' + kv(P.mediaNotes) + '</div>' +
       '<div class="grid g2"><div class="card"><h2>CP별 소재 사용 범위</h2>' + kv(P.cpNotes) + '</div>' +
