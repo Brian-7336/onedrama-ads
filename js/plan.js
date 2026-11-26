@@ -332,6 +332,7 @@ window.PLAN = {
       { at: '2026-11-25', title: '미친 BL소설에서 살아남기 (12/11 공개 예고)', link: 'https://youtube.com/shorts/4MR3gor026c' },
       { at: '2026-11-26', title: '원수를 사랑하라', link: 'https://youtube.com/shorts/485i9tCamJM' },
       { at: '2026-11-26', title: '망돌이 된 최애가 귀신붙어 찾아왔다', link: 'https://youtube.com/shorts/5ket5w4cfm0' },
+      { at: '2026-11-26', title: '황녀님의 퀸력', link: 'https://youtube.com/shorts/BYIXLaPG3WY' },
       { at: '', title: '계약결혼, 사냥개가 되겠습니다', link: 'https://youtube.com/shorts/FAt2k5KsFj4' },
     ],
     support: [
